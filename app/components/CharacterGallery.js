@@ -3,10 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 
-export default function CharacterGallery({
-  user,
-  onStartChat,
-}) {
+export default function CharacterGallery({ user, onStartChat }) {
   const [characters, setCharacters] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
@@ -108,8 +105,6 @@ export default function CharacterGallery({
           </div>
         )}
 
-
-
         {/* Badges */}
         <div className="absolute top-3 right-3 flex flex-col gap-2">
           {/* Visibility Badge */}
@@ -161,7 +156,10 @@ export default function CharacterGallery({
                   clipRule="evenodd"
                 />
               </svg>
-              {character.user_chat_count !== undefined ? character.user_chat_count : character.chat_count || 0} chats
+              {character.user_chat_count !== undefined
+                ? character.user_chat_count
+                : character.chat_count || 0}{" "}
+              chats
             </span>
           )}
         </div>
@@ -269,7 +267,6 @@ export default function CharacterGallery({
                 </p>
               </div>
             </div>
-
           </div>
         </div>
 
@@ -382,8 +379,6 @@ export default function CharacterGallery({
           </div>
         )}
       </div>
-
-
     </div>
   );
 }

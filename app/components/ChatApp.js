@@ -143,8 +143,6 @@ export default function ChatApp() {
     }
   };
 
-
-
   const handleBackToGallery = () => {
     setCurrentView("gallery");
     setCurrentSession(null);
@@ -207,10 +205,7 @@ export default function ChatApp() {
   return (
     <>
       {currentView === "gallery" ? (
-        <CharacterGallery
-          user={userData}
-          onStartChat={handleStartChat}
-        />
+        <CharacterGallery user={userData} onStartChat={handleStartChat} />
       ) : (
         <div className="flex h-screen w-full overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-100">
           <ChatSidebar

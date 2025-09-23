@@ -16,10 +16,13 @@ export async function GET(request) {
     if (currentUserId && characters.length > 0) {
       const charactersWithUserChatCount = await Promise.all(
         characters.map(async (character) => {
-          const userChatCount = await dbService.getUserChatCountForCharacter(currentUserId, character.id);
+          const userChatCount = await dbService.getUserChatCountForCharacter(
+            currentUserId,
+            character.id
+          );
           return {
             ...character,
-            user_chat_count: userChatCount
+            user_chat_count: userChatCount,
           };
         })
       );
@@ -39,5 +42,3 @@ export async function GET(request) {
     return Response.json({ error: "Internal server error" }, { status: 500 });
   }
 }
-
-
