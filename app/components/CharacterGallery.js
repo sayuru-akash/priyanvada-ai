@@ -5,11 +5,7 @@ import Image from "next/image";
 
 export default function CharacterGallery({
   user,
-  onCharacterSelect,
-  onCreateCharacter,
   onStartChat,
-  onEditCharacter,
-  refreshTrigger,
 }) {
   const [characters, setCharacters] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -23,6 +19,11 @@ export default function CharacterGallery({
 
       // Load all public characters
       params.append("isPublic", "true");
+
+      // Add current user ID to get user-specific chat counts
+      if (user?.id) {
+        params.append("currentUserId", user.id);
+      }
 
       if (params.toString()) {
         url += `?${params.toString()}`;
@@ -38,11 +39,11 @@ export default function CharacterGallery({
       console.error("Failed to load characters:", error);
     }
     setLoading(false);
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     loadCharacters();
-  }, [loadCharacters, refreshTrigger]);
+  }, [loadCharacters]);
 
   const handleStartChat = async (character) => {
     try {
@@ -107,46 +108,10 @@ export default function CharacterGallery({
           </div>
         )}
 
-        {/* Edit Overlay */}
-        {onEditCharacter && (
-          <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-40 transition-all duration-300 flex items-center justify-center group-hover:opacity-100 opacity-0">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onEditCharacter(character);
-              }}
-              className="px-4 py-2 bg-white text-gray-900 rounded-lg font-semibold hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black transform hover:scale-105 transition-all duration-200 flex items-center shadow-lg"
-            >
-              <svg
-                className="w-4 h-4 mr-2"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-              </svg>
-              Edit
-            </button>
-          </div>
-        )}
+
 
         {/* Badges */}
         <div className="absolute top-3 right-3 flex flex-col gap-2">
-          {/* Quick Actions Menu */}
-          {onEditCharacter && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onEditCharacter(character);
-              }}
-              className="p-2 bg-white/90 hover:bg-white text-gray-700 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-110 backdrop-blur-sm border border-white/20"
-              title="Edit Character"
-            >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-              </svg>
-            </button>
-          )}
-
           {/* Visibility Badge */}
           {character.is_public ? (
             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-500/90 text-white backdrop-blur-sm border border-white/20">
@@ -182,35 +147,23 @@ export default function CharacterGallery({
         </div>
 
         <div className="absolute top-3 left-3 flex flex-col gap-2">
-          {/* Edit Indicator */}
-          {onEditCharacter && (
-            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-500/90 text-white backdrop-blur-sm border border-white/20">
+          {/* Chat Count Badge - Only show for authenticated users */}
+          {user && (
+            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-600/90 text-white backdrop-blur-sm border border-white/20">
               <svg
                 className="w-3 h-3 mr-1"
                 fill="currentColor"
                 viewBox="0 0 20 20"
               >
-                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                <path
+                  fillRule="evenodd"
+                  d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z"
+                  clipRule="evenodd"
+                />
               </svg>
-              Editable
+              {character.user_chat_count !== undefined ? character.user_chat_count : character.chat_count || 0} chats
             </span>
           )}
-
-          {/* Chat Count Badge */}
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-600/90 text-white backdrop-blur-sm border border-white/20">
-            <svg
-              className="w-3 h-3 mr-1"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path
-                fillRule="evenodd"
-                d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z"
-                clipRule="evenodd"
-              />
-            </svg>
-            {character.chat_count || 0} chats
-          </span>
         </div>
 
         {character.rating && (
@@ -266,25 +219,6 @@ export default function CharacterGallery({
 
         {/* Action buttons */}
         <div className="space-y-3">
-          {onEditCharacter && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onEditCharacter(character);
-              }}
-              className="w-full px-4 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg font-semibold hover:from-emerald-700 hover:to-teal-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transform hover:scale-[1.02] transition-all duration-200 flex items-center justify-center shadow-lg hover:shadow-xl"
-            >
-              <svg
-                className="w-5 h-5 mr-2"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-              </svg>
-              Edit Character
-            </button>
-          )}
-
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -335,25 +269,7 @@ export default function CharacterGallery({
                 </p>
               </div>
             </div>
-            <div className="flex gap-3">
-              <button
-                onClick={onCreateCharacter}
-                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 flex items-center"
-              >
-                <svg
-                  className="w-5 h-5 mr-2"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                Create Character
-              </button>
-            </div>
+
           </div>
         </div>
 
@@ -443,7 +359,7 @@ export default function CharacterGallery({
               <p className="text-gray-600 mb-8 leading-relaxed">
                 {searchTerm
                   ? "Try adjusting your search terms or browse all available characters"
-                  : "Be the first to discover amazing characters in our gallery"}
+                  : "Discover amazing characters in our gallery"}
               </p>
 
               <div className="flex flex-wrap gap-3 justify-center">
@@ -455,60 +371,11 @@ export default function CharacterGallery({
                     Clear Search
                   </button>
                 )}
-                <button
-                  onClick={onCreateCharacter}
-                  className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 flex items-center"
-                >
-                  <svg
-                    className="w-5 h-5 mr-2"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  Create Character
-                </button>
               </div>
             </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {/* Create Character Card */}
-            <div className="group bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border-2 border-dashed border-blue-300 overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 hover:scale-[1.02] hover:border-blue-500 hover:from-blue-100 hover:to-indigo-100 cursor-pointer">
-              <div
-                className="h-full p-8 flex flex-col items-center justify-center text-center"
-                onClick={onCreateCharacter}
-              >
-                <div className="w-20 h-20 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full flex items-center justify-center shadow-lg mb-6 group-hover:scale-110 transition-transform duration-300">
-                  <svg
-                    className="w-10 h-10 text-white group-hover:rotate-90 transition-transform duration-300"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">
-                  Create New Character
-                </h3>
-                <p className="text-gray-600 text-sm leading-relaxed mb-4">
-                  Design your own unique character with custom personality,
-                  appearance, and conversation style
-                </p>
-                <div className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg font-semibold text-sm shadow-md group-hover:shadow-lg transition-shadow duration-200">
-                  Get Started
-                </div>
-              </div>
-            </div>
-
             {filteredCharacters.map((character) => (
               <CharacterCard key={character.id} character={character} />
             ))}
@@ -516,26 +383,7 @@ export default function CharacterGallery({
         )}
       </div>
 
-      {/* Floating Action Button */}
-      <div className="fixed bottom-8 right-8 z-40">
-        <button
-          onClick={onCreateCharacter}
-          className="w-16 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full shadow-2xl hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transform hover:scale-110 transition-all duration-200 flex items-center justify-center group"
-          title="Create New Character"
-        >
-          <svg
-            className="w-8 h-8 group-hover:rotate-90 transition-transform duration-200"
-            fill="currentColor"
-            viewBox="0 0 20 20"
-          >
-            <path
-              fillRule="evenodd"
-              d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-              clipRule="evenodd"
-            />
-          </svg>
-        </button>
-      </div>
+
     </div>
   );
 }

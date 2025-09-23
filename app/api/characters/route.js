@@ -5,11 +5,30 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
     const isPublic = searchParams.get("isPublic");
+    const currentUserId = searchParams.get("currentUserId"); // For getting user-specific chat counts
 
     const characters = await dbService.getCharacters(
       userId,
       isPublic === "true" ? true : isPublic === "false" ? false : null
     );
+
+    // If currentUserId is provided, get user-specific chat counts
+    if (currentUserId && characters.length > 0) {
+      const charactersWithUserChatCount = await Promise.all(
+        characters.map(async (character) => {
+          const userChatCount = await dbService.getUserChatCountForCharacter(currentUserId, character.id);
+          return {
+            ...character,
+            user_chat_count: userChatCount
+          };
+        })
+      );
+
+      return Response.json({
+        success: true,
+        characters: charactersWithUserChatCount,
+      });
+    }
 
     return Response.json({
       success: true,
@@ -21,37 +40,4 @@ export async function GET(request) {
   }
 }
 
-export async function POST(request) {
-  try {
-    const characterData = await request.json();
-    const { creatorId } = characterData;
 
-    if (!creatorId) {
-      return Response.json(
-        { error: "Creator ID is required" },
-        { status: 400 }
-      );
-    }
-
-    // Validate required fields
-    const requiredFields = ["name", "description", "greeting"];
-    for (const field of requiredFields) {
-      if (!characterData[field]) {
-        return Response.json(
-          { error: `${field} is required` },
-          { status: 400 }
-        );
-      }
-    }
-
-    const character = await dbService.createCharacter(creatorId, characterData);
-
-    return Response.json({
-      success: true,
-      character,
-    });
-  } catch (error) {
-    console.error("Create Character API Error:", error);
-    return Response.json({ error: "Internal server error" }, { status: 500 });
-  }
-}

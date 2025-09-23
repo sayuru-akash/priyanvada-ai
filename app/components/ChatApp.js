@@ -6,7 +6,6 @@ import ChatSidebar from "./ChatSidebar";
 import ChatInterface from "./ChatInterface";
 import AuthComponent from "./AuthComponent";
 import CharacterGallery from "./CharacterGallery";
-import CharacterCreator from "./CharacterCreator";
 
 export default function ChatApp() {
   const { user, userProfile, signOut, loading } = useAuth();
@@ -34,10 +33,7 @@ export default function ChatApp() {
     return () => window.removeEventListener("resize", handleResize);
   }, [isClient]);
   const [currentView, setCurrentView] = useState("gallery"); // 'gallery', 'chat'
-  const [showCharacterCreator, setShowCharacterCreator] = useState(false);
   const [selectedCharacter, setSelectedCharacter] = useState(null);
-  const [galleryRefreshTrigger, setGalleryRefreshTrigger] = useState(0);
-  const [characterToEdit, setCharacterToEdit] = useState(null);
 
   // Load user sessions when user is authenticated
   useEffect(() => {
@@ -147,17 +143,7 @@ export default function ChatApp() {
     }
   };
 
-  const handleCharacterCreated = (character) => {
-    setShowCharacterCreator(false);
-    // Trigger gallery refresh by updating the trigger value
-    setGalleryRefreshTrigger((prev) => prev + 1);
-  };
 
-  const handleCharacterUpdated = () => {
-    setShowCharacterCreator(false);
-    setCharacterToEdit(null);
-    setGalleryRefreshTrigger((prev) => prev + 1);
-  };
 
   const handleBackToGallery = () => {
     setCurrentView("gallery");
@@ -224,12 +210,6 @@ export default function ChatApp() {
         <CharacterGallery
           user={userData}
           onStartChat={handleStartChat}
-          onCreateCharacter={() => setShowCharacterCreator(true)}
-          onEditCharacter={(character) => {
-            setCharacterToEdit(character);
-            setShowCharacterCreator(true);
-          }}
-          refreshTrigger={galleryRefreshTrigger}
         />
       ) : (
         <div className="flex h-screen w-full overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -254,19 +234,6 @@ export default function ChatApp() {
             onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
           />
         </div>
-      )}
-
-      {showCharacterCreator && (
-        <CharacterCreator
-          user={userData}
-          character={characterToEdit}
-          onCharacterCreated={handleCharacterCreated}
-          onCharacterUpdated={handleCharacterUpdated}
-          onClose={() => {
-            setShowCharacterCreator(false);
-            setCharacterToEdit(null);
-          }}
-        />
       )}
     </>
   );
