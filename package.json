@@ -1,0 +1,40 @@
+{
+  "name": "frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build --turbopack",
+    "start": "next start",
+    "lint": "eslint",
+    "postbuild": "echo 'Build completed. Make sure Supabase database is set up. See SUPABASE_MIGRATION.md for details.'"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@google-cloud/local-auth": "^3.0.1",
+    "@google/generative-ai": "^0.24.1",
+    "@mui/icons-material": "^7.3.2",
+    "@mui/material": "^7.3.2",
+    "@mui/x-date-pickers": "^8.11.1",
+    "@supabase/supabase-js": "^2.57.2",
+    "axios": "^1.11.0",
+    "dayjs": "^1.11.18",
+    "dotenv": "^17.2.2",
+    "google-auth-library": "^10.3.0",
+    "google-one-tap": "^1.0.6",
+    "googleapis": "^160.0.0",
+    "next": "15.5.2",
+    "pg": "^8.16.3",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-markdown": "^10.1.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "eslint": "^9",
+    "eslint-config-next": "15.5.2",
+    "tailwindcss": "^4"
+  }
+}
