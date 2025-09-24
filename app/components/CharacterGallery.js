@@ -7,6 +7,7 @@ export default function CharacterGallery({ user, onStartChat }) {
   const [characters, setCharacters] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
+  const [startingChatId, setStartingChatId] = useState(null);
 
   const loadCharacters = useCallback(async () => {
     setLoading(true);
@@ -43,6 +44,7 @@ export default function CharacterGallery({ user, onStartChat }) {
   }, [loadCharacters]);
 
   const handleStartChat = async (character) => {
+    setStartingChatId(character.id);
     try {
       const response = await fetch("/api/sessions", {
         method: "POST",
@@ -62,6 +64,8 @@ export default function CharacterGallery({ user, onStartChat }) {
       }
     } catch (error) {
       console.error("Failed to start chat:", error);
+    } finally {
+      setStartingChatId(null);
     }
   };
 
@@ -222,20 +226,30 @@ export default function CharacterGallery({ user, onStartChat }) {
               e.stopPropagation();
               handleStartChat(character);
             }}
-            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transform hover:scale-[1.02] transition-all duration-200 flex items-center justify-center shadow-lg hover:shadow-xl"
+            disabled={startingChatId === character.id}
+            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transform hover:scale-[1.02] transition-all duration-200 flex items-center justify-center shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
           >
-            <svg
-              className="w-5 h-5 mr-2"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path
-                fillRule="evenodd"
-                d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z"
-                clipRule="evenodd"
-              />
-            </svg>
-            Start Conversation
+            {startingChatId === character.id ? (
+              <>
+                <div className="animate-spin mr-2 h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
+                Starting...
+              </>
+            ) : (
+              <>
+                <svg
+                  className="w-5 h-5 mr-2"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                Start Conversation
+              </>
+            )}
           </button>
         </div>
       </div>

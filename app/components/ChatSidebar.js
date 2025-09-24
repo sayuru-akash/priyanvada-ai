@@ -19,6 +19,7 @@ export default function ChatSidebar({
   const [menuOpen, setMenuOpen] = useState(false);
   const [selectedSession, setSelectedSession] = useState(null);
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
+  const [isStartingConversation, setIsStartingConversation] = useState(false);
 
   const handleSessionMenu = (event, session) => {
     event.stopPropagation();
@@ -74,7 +75,7 @@ export default function ChatSidebar({
       {/* Desktop Sidebar */}
       <div className="hidden md:flex flex-col w-80 bg-white border-r border-gray-200 shadow-sm">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-blue-100">
+        <div className="flex items-center p-4 border-b border-blue-100">
           <button
             onClick={onBackToGallery}
             className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
@@ -90,46 +91,48 @@ export default function ChatSidebar({
           <h2 className="text-lg font-semibold text-gray-900 flex-1 text-center">
             Chat History
           </h2>
-          <button
-            onClick={onToggle}
-            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors duration-200"
-          >
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-              <path
-                fillRule="evenodd"
-                d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
-                clipRule="evenodd"
-              />
-            </svg>
-          </button>
         </div>
 
         {/* New Chat Button */}
         <div className="p-4 border-b border-blue-100">
           <button
-            onClick={() => {
+            onClick={async () => {
               if (selectedCharacter) {
-                onNewSession(
-                  selectedCharacter.id,
-                  `Chat with ${selectedCharacter.name}`
-                );
+                setIsStartingConversation(true);
+                try {
+                  await onNewSession(
+                    selectedCharacter.id,
+                    `Chat with ${selectedCharacter.name}`
+                  );
+                } finally {
+                  setIsStartingConversation(false);
+                }
               }
             }}
-            disabled={!selectedCharacter}
+            disabled={!selectedCharacter || isStartingConversation}
             className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] transition-all duration-200 flex items-center justify-center shadow-lg hover:shadow-xl"
           >
-            <svg
-              className="w-5 h-5 mr-2"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path
-                fillRule="evenodd"
-                d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-                clipRule="evenodd"
-              />
-            </svg>
-            New Chat
+            {isStartingConversation ? (
+              <>
+                <div className="animate-spin mr-2 h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
+                Starting...
+              </>
+            ) : (
+              <>
+                <svg
+                  className="w-5 h-5 mr-2"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                New Chat
+              </>
+            )}
           </button>
         </div>
 
@@ -223,37 +226,22 @@ export default function ChatSidebar({
             </div>
           </div>
 
-          <div className="flex gap-2">
-            <button className="flex-1 p-2 text-gray-600 hover:bg-white hover:text-blue-600 rounded-lg transition-colors duration-200">
-              <svg
-                className="w-4 h-4 mx-auto"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </button>
-            <button
-              onClick={onLogout}
-              className="flex-1 p-2 text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors duration-200"
+          <button
+            onClick={onLogout}
+            className="w-full p-2 text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors duration-200"
+          >
+            <svg
+              className="w-4 h-4 mx-auto"
+              fill="currentColor"
+              viewBox="0 0 20 20"
             >
-              <svg
-                className="w-4 h-4 mx-auto"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </button>
-          </div>
+              <path
+                fillRule="evenodd"
+                d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </button>
         </div>
       </div>
 
@@ -306,30 +294,44 @@ export default function ChatSidebar({
           {/* New Chat Button */}
           <div className="p-4 border-b border-blue-100">
             <button
-              onClick={() => {
+              onClick={async () => {
                 if (selectedCharacter) {
-                  onNewSession(
-                    selectedCharacter.id,
-                    `Chat with ${selectedCharacter.name}`
-                  );
+                  setIsStartingConversation(true);
+                  try {
+                    await onNewSession(
+                      selectedCharacter.id,
+                      `Chat with ${selectedCharacter.name}`
+                    );
+                  } finally {
+                    setIsStartingConversation(false);
+                  }
                 }
                 onToggle();
               }}
-              disabled={!selectedCharacter}
+              disabled={!selectedCharacter || isStartingConversation}
               className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] transition-all duration-200 flex items-center justify-center shadow-lg hover:shadow-xl"
             >
-              <svg
-                className="w-5 h-5 mr-2"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              New Chat
+              {isStartingConversation ? (
+                <>
+                  <div className="animate-spin mr-2 h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
+                  Starting...
+                </>
+              ) : (
+                <>
+                  <svg
+                    className="w-5 h-5 mr-2"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  New Chat
+                </>
+              )}
             </button>
           </div>
 
