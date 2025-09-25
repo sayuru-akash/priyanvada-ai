@@ -10,6 +10,7 @@
     "test:db": "node scripts/test-database.js",
     "test:postgres": "node scripts/test-postgres.js",
     "edit:characters": "node scripts/character-editor.js",
+    "db:viewer": "node scripts/database-viewer.js",
     "postbuild": "echo 'Build completed. Make sure both Supabase (auth) and PostgreSQL (data) are configured. See MIGRATION_GUIDE.md for details.'"
   },
   "dependencies": {
@@ -24,6 +25,7 @@
     "axios": "^1.11.0",
     "dayjs": "^1.11.18",
     "dotenv": "^17.2.2",
+    "express": "^4.21.2",
     "google-auth-library": "^10.3.0",
     "google-one-tap": "^1.0.6",
     "googleapis": "^160.0.0",
