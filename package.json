@@ -7,7 +7,9 @@
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
-    "postbuild": "echo 'Build completed. Make sure Supabase database is set up. See SUPABASE_MIGRATION.md for details.'"
+    "test:db": "node scripts/test-database.js",
+    "test:postgres": "node scripts/test-postgres.js",
+    "postbuild": "echo 'Build completed. Make sure both Supabase (auth) and PostgreSQL (data) are configured. See MIGRATION_GUIDE.md for details.'"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
