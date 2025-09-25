@@ -210,7 +210,7 @@ export default function CharacterGallery({ user, onStartChat }) {
 
       {/* Character Info */}
       <div className="p-5">
-        <div className="mb-3">
+        {/* <div className="mb-3">
           <h3 className="text-lg font-bold text-gray-900 line-clamp-1">
             {character.name}
           </h3>
@@ -224,7 +224,7 @@ export default function CharacterGallery({ user, onStartChat }) {
               {character.book_name}
             </p>
           )}
-        </div>
+        </div> */}
 
         <p className="text-gray-600 text-sm leading-relaxed mb-4 line-clamp-3">
           {character.description}
