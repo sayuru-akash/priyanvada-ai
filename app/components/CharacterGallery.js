@@ -154,26 +154,6 @@ export default function CharacterGallery({ user, onStartChat }) {
             </span>
           )}
         </div>
-
-        <div className="absolute top-3 left-3 flex flex-col gap-2">
-          {/* Chat Count Badge - Only show for authenticated users */}
-          {user && (
-            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-600/90 text-white backdrop-blur-sm border border-white/20">
-              <svg
-                className="w-3 h-3 mr-1"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              {character.chat_count || 0} chats
-            </span>
-          )}
-        </div>
       </div>
 
       {/* Character Info */}
