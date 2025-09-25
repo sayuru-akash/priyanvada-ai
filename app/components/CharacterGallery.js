@@ -306,7 +306,7 @@ export default function CharacterGallery({ user, onStartChat }) {
                   PRIYANVADA AI
                 </h1>
                 <p className="text-lg text-gray-600 font-medium">
-                  මොහාන්ගේ ලෝකයට පිවිසෙමු ...
+                  මොහාන්ගේ ලෝකයට පිවිසෙමු...
                 </p>
               </div>
             </div>
