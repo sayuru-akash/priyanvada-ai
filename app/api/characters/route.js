@@ -7,31 +7,25 @@ export async function GET(request) {
     const isPublic = searchParams.get("isPublic");
     const currentUserId = searchParams.get("currentUserId"); // For getting user-specific chat counts
 
-    const characters = await dbService.getCharacters(
-      userId,
-      isPublic === "true" ? true : isPublic === "false" ? false : null
-    );
-
-    // If currentUserId is provided, get user-specific chat counts
-    if (currentUserId && characters.length > 0) {
-      const charactersWithUserChatCount = await Promise.all(
-        characters.map(async (character) => {
-          const userChatCount = await dbService.getUserChatCountForCharacter(
-            currentUserId,
-            character.id
-          );
-          return {
-            ...character,
-            user_chat_count: userChatCount,
-          };
-        })
+    // If currentUserId is provided, get characters with user chat counts in a single query
+    if (currentUserId) {
+      const characters = await dbService.getCharactersWithUserChatCounts(
+        currentUserId,
+        userId,
+        isPublic === "true" ? true : isPublic === "false" ? false : null
       );
 
       return Response.json({
         success: true,
-        characters: charactersWithUserChatCount,
+        characters,
       });
     }
+
+    // Otherwise, get characters without chat counts
+    const characters = await dbService.getCharacters(
+      userId,
+      isPublic === "true" ? true : isPublic === "false" ? false : null
+    );
 
     return Response.json({
       success: true,
