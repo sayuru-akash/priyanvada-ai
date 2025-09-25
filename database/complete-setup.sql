@@ -35,7 +35,8 @@ CREATE TABLE IF NOT EXISTS public.characters (
     is_active BOOLEAN DEFAULT TRUE,
     chat_count INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    book_name VARCHAR
 );
 
 -- Create chat_sessions table
