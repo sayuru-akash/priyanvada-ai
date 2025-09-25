@@ -17,7 +17,39 @@ export default function ChatInterface({
   const [loading, setLoading] = useState(false);
   const [typing, setTyping] = useState(false);
   const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
   const inputRef = useRef(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  // Adjust UI when virtual keyboard / viewport changes (mobile browsers)
+  useEffect(() => {
+    function updateKeyboard() {
+      if (window.visualViewport) {
+        const vh = window.visualViewport.height;
+        const ih = window.innerHeight;
+        const kb = Math.max(0, ih - vh);
+        setKeyboardHeight(kb);
+      } else {
+        setKeyboardHeight(0);
+      }
+    }
+
+    updateKeyboard();
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", updateKeyboard);
+      window.visualViewport.addEventListener("scroll", updateKeyboard);
+    }
+    window.addEventListener("resize", updateKeyboard);
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener("resize", updateKeyboard);
+        window.visualViewport.removeEventListener("scroll", updateKeyboard);
+      }
+      window.removeEventListener("resize", updateKeyboard);
+    };
+  }, []);
 
   const loadMessages = useCallback(async () => {
     if (!session) {
@@ -43,6 +75,18 @@ export default function ChatInterface({
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // When keyboard height changes, ensure messages area has enough bottom padding and scroll to bottom
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (container) {
+      container.style.paddingBottom = keyboardHeight
+        ? `${keyboardHeight + 120}px`
+        : "";
+    }
+    // scroll after layout adjusts
+    setTimeout(() => scrollToBottom(), 80);
+  }, [keyboardHeight]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -421,7 +465,10 @@ export default function ChatInterface({
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto bg-gradient-to-b from-gray-50 to-white">
+      <div
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto bg-gradient-to-b from-gray-50 to-white"
+      >
         <div className="py-6">
           {memoizedMessages}
           {typing && <TypingIndicator />}
@@ -430,7 +477,12 @@ export default function ChatInterface({
       </div>
 
       {/* Input Area */}
-      <div className="bg-white border-t border-blue-200 p-4 shadow-lg">
+      <div
+        className="bg-white border-t border-blue-200 p-4 shadow-lg"
+        style={{
+          paddingBottom: keyboardHeight ? keyboardHeight + 12 : undefined,
+        }}
+      >
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -440,6 +492,15 @@ export default function ChatInterface({
           <div className="relative max-w-4xl mx-auto">
             <textarea
               ref={inputRef}
+              onFocus={() => {
+                // ensure input is visible when keyboard opens
+                setTimeout(() => {
+                  inputRef.current?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "center",
+                  });
+                }, 50);
+              }}
               rows={1}
               placeholder="Type your message..."
               value={inputMessage}
