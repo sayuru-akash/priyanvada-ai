@@ -9,7 +9,7 @@
     "lint": "eslint",
     "test:db": "node scripts/test-database.js",
     "test:postgres": "node scripts/test-postgres.js",
-    "edit:characters": "node character-editor.js",
+    "edit:characters": "node scripts/character-editor.js",
     "postbuild": "echo 'Build completed. Make sure both Supabase (auth) and PostgreSQL (data) are configured. See MIGRATION_GUIDE.md for details.'"
   },
   "dependencies": {

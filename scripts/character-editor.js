@@ -4,7 +4,7 @@
 require("dotenv").config({ path: ".env.local" });
 
 const readline = require("readline");
-const postgres = require("./lib/postgres");
+const postgres = require("../lib/postgres");
 
 // Create readline interface
 const rl = readline.createInterface({
