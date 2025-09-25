@@ -302,7 +302,7 @@ export default function CharacterGallery({ user, onStartChat }) {
                 />
               </div>
               <div>
-                <h1 className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
+                <h1 className="text-2xl sm:text-1xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
                   PRIYANVADA AI
                 </h1>
                 <p className="text-lg text-gray-600 font-medium">
