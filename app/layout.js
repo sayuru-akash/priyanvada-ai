@@ -15,10 +15,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "PRIYANVADA AI",
-  description: "මොහාන්ගේ ලෝකයට පිවිසෙමු..",
+  title: "PRIYANVADA AI - Bringing Your Favorite Characters to Life",
+  description: "මොහාන් රාජ් මඩවලගේ ලෝකයට පිවිසෙමු..",
   icons: {
-    icon: "/images/logo.png",
+    icon: "/images/logo.ico",
+    shortcut: "/images/logo.ico",
+    apple: "/images/logo.png",
   },
 };
 
@@ -26,7 +28,9 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <Head>
-        <link rel="icon" href="/images/logo.png" type="image/png" />
+        <link rel="icon" href="/images/logo.ico" type="image/x-icon" />
+        <link rel="shortcut icon" href="/images/logo.ico" type="image/x-icon" />
+        <link rel="apple-touch-icon" href="/images/logo.png" />
       </Head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
