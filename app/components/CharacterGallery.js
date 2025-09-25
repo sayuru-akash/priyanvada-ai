@@ -9,6 +9,20 @@ export default function CharacterGallery({ user, onStartChat }) {
   const [loading, setLoading] = useState(true);
   const [startingChatId, setStartingChatId] = useState(null);
 
+  const characterOrderByName = [
+    "ප්‍රියංවදා",
+    "අහිංසා",
+    "කහ කිරිල්ලි",
+    "ලොවීනා",
+    "පුන්නි",
+    "පිංචි",
+    "දස්කොන්",
+    "මන්දෝදරී",
+    "සුරංග වික්‍රමසිංහ",
+    "රුවන් හේවගේ",
+    "අන්දිරිස්",
+  ];
+
   const loadCharacters = useCallback(async () => {
     setLoading(true);
     try {
@@ -78,6 +92,16 @@ export default function CharacterGallery({ user, onStartChat }) {
           tag.toLowerCase().includes(searchTerm.toLowerCase())
         ))
   );
+
+  const orderedCharacters = filteredCharacters.sort((a, b) => {
+    const indexA = characterOrderByName.indexOf(a.name);
+    const indexB = characterOrderByName.indexOf(b.name);
+    if (indexA === -1) return 1;
+    if (indexB === -1) return -1;
+    return indexA - indexB;
+  });
+
+  console.log("Ordered Characters:", orderedCharacters); // Debugging line
 
   const CharacterCard = ({ character }) => (
     <div className="group bg-white rounded-2xl shadow-lg border border-blue-100 overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 hover:scale-[1.02] hover:border-blue-300">
@@ -392,7 +416,7 @@ export default function CharacterGallery({ user, onStartChat }) {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredCharacters.map((character) => (
+            {orderedCharacters.map((character) => (
               <CharacterCard key={character.id} character={character} />
             ))}
           </div>
