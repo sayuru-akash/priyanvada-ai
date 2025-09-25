@@ -26,22 +26,8 @@ export default function CharacterGallery({ user, onStartChat }) {
   const loadCharacters = useCallback(async () => {
     setLoading(true);
     try {
-      let url = "/api/characters";
-      const params = new URLSearchParams();
-
-      // Load all public characters
-      params.append("isPublic", "true");
-
-      // Add current user ID to get user-specific chat counts
-      if (user?.id) {
-        params.append("currentUserId", user.id);
-      }
-
-      if (params.toString()) {
-        url += `?${params.toString()}`;
-      }
-
-      const response = await fetch(url);
+      // Simple, fast character fetch - no extra parameters
+      const response = await fetch("/api/characters?isPublic=true");
       const result = await response.json();
 
       if (result.success) {
@@ -51,7 +37,7 @@ export default function CharacterGallery({ user, onStartChat }) {
       console.error("Failed to load characters:", error);
     }
     setLoading(false);
-  }, [user?.id]);
+  }, []); // No dependencies - characters don't change based on user
 
   useEffect(() => {
     loadCharacters();
@@ -184,10 +170,7 @@ export default function CharacterGallery({ user, onStartChat }) {
                   clipRule="evenodd"
                 />
               </svg>
-              {character.user_chat_count !== undefined
-                ? character.user_chat_count
-                : character.chat_count || 0}{" "}
-              chats
+              {character.chat_count || 0} chats
             </span>
           )}
         </div>
@@ -298,7 +281,7 @@ export default function CharacterGallery({ user, onStartChat }) {
                   alt="Priyanvada AI Logo"
                   width={80}
                   height={80}
-                  className="rounded-lg shadow-lg"
+                  className="rounded-lg shadow-lg bg-white"
                 />
               </div>
               <div>
