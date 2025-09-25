@@ -12,6 +12,7 @@ export default function CharacterGallery({ user, onStartChat }) {
   const characterOrderByName = [
     "ප්‍රියංවදා",
     "අහිංසා",
+    "ශානක",
     "කහ කිරිල්ලි",
     "ලොවීනා",
     "පුන්නි",

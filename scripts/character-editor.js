@@ -21,6 +21,28 @@ function askQuestion(question) {
   });
 }
 
+// New helper: collect multiline input until a single dot '.' on its own line
+function askMultiline(prompt) {
+  return new Promise((resolve) => {
+    console.log(prompt);
+    console.log(
+      "(Enter multiple lines. Finish with a single '.' on a line by itself)"
+    );
+    const lines = [];
+
+    function onLine(line) {
+      if (line.trim() === ".") {
+        rl.removeListener("line", onLine);
+        resolve(lines.join("\n").trim());
+      } else {
+        lines.push(line);
+      }
+    }
+
+    rl.on("line", onLine);
+  });
+}
+
 // Display character list
 function displayCharacters(characters) {
   console.log("\n📋 Available Characters:");
@@ -88,6 +110,11 @@ function displayCharacterDetails(character) {
       key: "book_name",
       label: "Book Name",
       value: character.book_name || "N/A",
+    },
+    12: {
+      key: "creator_id",
+      label: "Creator ID",
+      value: character.creator_id || "N/A",
     },
   };
 
@@ -175,8 +202,23 @@ async function createNewCharacter() {
 
   const characterData = {};
 
+  // Fields that should accept multiline input
+  const MULTILINE_FIELDS = [
+    "description",
+    "personality",
+    "scenario",
+    "greeting",
+    "example_messages",
+  ];
+
   // Define all character fields with their prompts
   const characterFields = [
+    {
+      key: "creator_id",
+      label: "Creator ID",
+      prompt: "🧑‍💻 Creator ID (UUID) - optional but recommended: ",
+      required: false,
+    },
     {
       key: "name",
       label: "Name",
@@ -254,7 +296,13 @@ async function createNewCharacter() {
   // Collect data for each field
   for (const field of characterFields) {
     while (true) {
-      const answer = await askQuestion(field.prompt);
+      // Use multiline input for configured fields
+      let answer;
+      if (MULTILINE_FIELDS.includes(field.key)) {
+        answer = await askMultiline(field.prompt);
+      } else {
+        answer = await askQuestion(field.prompt);
+      }
 
       // Handle default values
       if (!answer && field.default !== undefined) {
@@ -304,30 +352,51 @@ async function createNewCharacter() {
     return null;
   }
 
-  // Insert character into database
+  // Insert character into database (build columns dynamically so creator_id can be included)
   try {
-    const query = `
-      INSERT INTO characters (
-        name, title, description, personality, scenario, greeting, 
-        avatar_url, tags, is_public, is_active, book_name, chat_count
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-      RETURNING *
-    `;
+    const cols = [];
+    const placeholders = [];
+    const values = [];
 
-    const values = [
-      characterData.name,
-      characterData.title,
-      characterData.description,
-      characterData.personality,
-      characterData.scenario,
-      characterData.greeting,
-      characterData.avatar_url,
-      characterData.tags,
-      characterData.is_public,
-      true, // is_active - always true for new characters
-      characterData.book_name,
-      0, // chat_count - start with 0
-    ];
+    const add = (colName, val) => {
+      values.push(val);
+      cols.push(colName);
+      placeholders.push(`$${values.length}`);
+    };
+
+    // Required: name
+    add("name", characterData.name);
+
+    // Optional fields
+    if (characterData.creator_id) add("creator_id", characterData.creator_id);
+    if (characterData.title) add("title", characterData.title);
+    if (characterData.description)
+      add("description", characterData.description);
+    if (characterData.personality)
+      add("personality", characterData.personality);
+    if (characterData.scenario) add("scenario", characterData.scenario);
+    if (characterData.greeting) add("greeting", characterData.greeting);
+    if (characterData.avatar_url) add("avatar_url", characterData.avatar_url);
+    if (characterData.tags) add("tags", characterData.tags);
+    // is_public included (even if null) - default to false if not provided
+    add(
+      "is_public",
+      characterData.is_public !== null && characterData.is_public !== undefined
+        ? characterData.is_public
+        : false
+    );
+
+    // Always set is_active = true for new characters
+    add("is_active", true);
+
+    if (characterData.book_name) add("book_name", characterData.book_name);
+
+    // chat_count default to 0
+    add("chat_count", 0);
+
+    const query = `INSERT INTO characters (${cols.join(
+      ", "
+    )}) VALUES (${placeholders.join(", ")}) RETURNING *`;
 
     const result = await postgres.query(query, values);
 
@@ -431,11 +500,28 @@ async function main() {
         prompt =
           "\n💬 Enter avatar URL (image URL or data:image/... for base64): ";
         console.log(
-          "💡 Tip: Use image URLs (https://...) or base64 data URLs (data:image/...)"
+          "💡 Tip: Use image URLs (https://...) or base64 data URLs (data:image/... )"
         );
       }
 
-      const newValue = await askQuestion(prompt);
+      // Fields that accept multiline input when editing
+      const MULTILINE_FIELDS_EDIT = [
+        "description",
+        "personality",
+        "scenario",
+        "greeting",
+        "example_messages",
+      ];
+
+      let newValue;
+      if (MULTILINE_FIELDS_EDIT.includes(selectedField.key)) {
+        // Use multiline input for these fields
+        newValue = await askMultiline(
+          `\n💬 Enter new value for ${selectedField.label}:`
+        );
+      } else {
+        newValue = await askQuestion(prompt);
+      }
 
       if (newValue === "") {
         console.log("⏭️  Skipping field update");
