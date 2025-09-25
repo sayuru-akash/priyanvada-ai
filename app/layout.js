@@ -15,14 +15,19 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "ChatApp - AI Character Chat",
-  description: "Chat with AI characters powered by Supabase",
+  title: "PRIYANVADA AI",
+  description: "මොහාන්ගේ ලෝකයට පිවිසෙමු..",
+  icons: {
+    icon: "/images/logo.png",
+  },
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <Head>{/* Metadata and other head elements */}</Head>
+      <Head>
+        <link rel="icon" href="/images/logo.png" type="image/png" />
+      </Head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
