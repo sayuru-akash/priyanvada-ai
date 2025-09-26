@@ -404,29 +404,27 @@ export default function CharacterGallery({
             ))}
           </div>
         )}
-      </div>
 
-      {/* Bottom Left Logout Button */}
-      <div className="fixed bottom-6 left-6 z-50">
-        <button
-          onClick={() => onLogout && onLogout()}
-          className="flex items-center gap-3 px-5 py-3 bg-white/90 backdrop-blur-sm border border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-white hover:border-gray-300 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transform hover:scale-[1.02] transition-all duration-200 shadow-lg hover:shadow-xl group"
-        >
-          <svg
-            className="w-5 h-5 group-hover:text-red-600 transition-colors duration-200"
-            fill="currentColor"
-            viewBox="0 0 20 20"
+        {/* Logout Button at Bottom */}
+        <div className="mt-12 flex justify-center">
+          <button
+            onClick={() => onLogout && onLogout()}
+            className="flex items-center gap-3 px-6 py-3 bg-white/90 backdrop-blur-sm border border-red-200 text-red-600 rounded-xl font-medium hover:bg-red-50 hover:border-red-300 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transform hover:scale-[1.02] transition-all duration-200 shadow-lg hover:shadow-xl"
           >
-            <path
-              fillRule="evenodd"
-              d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z"
-              clipRule="evenodd"
-            />
-          </svg>
-          <span className="text-sm font-medium group-hover:text-red-600 transition-colors duration-200">
-            Logout
-          </span>
-        </button>
+            <svg
+              className="w-5 h-5"
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path
+                fillRule="evenodd"
+                d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z"
+                clipRule="evenodd"
+              />
+            </svg>
+            <span className="font-medium">Logout</span>
+          </button>
+        </div>
       </div>
     </div>
   );
