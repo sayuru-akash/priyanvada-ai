@@ -22,6 +22,31 @@ export const metadata = {
     shortcut: "/images/logo.ico",
     apple: "/images/logo.png",
   },
+  openGraph: {
+    title: "PRIYANVADA AI - Bringing Your Favorite Characters to Life",
+    description: "මොහාන් රාජ් මඩවලගේ ලෝකයට පිවිසෙමු..",
+    url: "https://www.priyanvadaai.com",
+    siteName: "PRIYANVADA AI",
+    images: [
+      {
+        url: "/images/thumbnail.jpg",
+        width: 1200,
+        height: 630,
+        alt: "PRIYANVADA AI - Chat with Your Favorite Characters",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "PRIYANVADA AI - Bringing Your Favorite Characters to Life",
+    description: "මොහාන් රාජ් මඩවලගේ ලෝකයට පිවිසෙමු..",
+    images: ["/images/thumbnail.jpg"],
+    creator: "@priyanvada_ai",
+    site: "@priyanvada_ai",
+  },
+  metadataBase: new URL("https://www.priyanvadaai.com"),
 };
 
 export default function RootLayout({ children }) {
