@@ -190,38 +190,52 @@ app.get("/api/users", async (req, res) => {
         throw error;
       }
 
-      // Get last activity for each user from PostgreSQL
-      const usersWithActivity = await Promise.all(
-        (allUsers || []).map(async (user) => {
-          try {
-            const lastActivityQuery = `
-              SELECT MAX(GREATEST(cs.created_at, cs.updated_at, 
-                COALESCE((SELECT MAX(timestamp) FROM messages WHERE session_id = cs.id), cs.created_at)
-              )) as last_activity
-              FROM chat_sessions cs 
-              WHERE user_id = $1
-            `;
-            const activityResult = await postgres.query(lastActivityQuery, [
-              user.id,
-            ]);
-            const lastActivity = activityResult.rows[0]?.last_activity;
+      // OPTIMIZED: Single bulk query to get last activity for all users
+      let usersWithActivity = [];
+      if (allUsers && allUsers.length > 0) {
+        const userIds = allUsers.map((u) => u.id);
+        const placeholders = userIds.map((_, i) => `$${i + 1}`).join(",");
 
-            return {
-              ...user,
-              last_activity: lastActivity,
-            };
-          } catch (error) {
-            console.warn(
-              `Error getting activity for user ${user.id}:`,
-              error.message
-            );
-            return {
-              ...user,
-              last_activity: user.created_at, // fallback to created_at
-            };
-          }
-        })
-      );
+        try {
+          const bulkActivityQuery = `
+            SELECT 
+              cs.user_id,
+              MAX(GREATEST(
+                cs.created_at, 
+                cs.updated_at, 
+                COALESCE(m.timestamp, cs.created_at)
+              )) as last_activity
+            FROM chat_sessions cs
+            LEFT JOIN messages m ON cs.id = m.session_id
+            WHERE cs.user_id IN (${placeholders})
+            GROUP BY cs.user_id
+          `;
+
+          const activityResult = await postgres.query(
+            bulkActivityQuery,
+            userIds
+          );
+          const activityMap = new Map();
+          activityResult.rows.forEach((row) => {
+            activityMap.set(row.user_id, row.last_activity);
+          });
+
+          // Combine user data with activity data
+          usersWithActivity = allUsers.map((user) => ({
+            ...user,
+            last_activity: activityMap.get(user.id) || user.created_at,
+          }));
+        } catch (error) {
+          console.warn(
+            "Error in bulk activity query, using created_at as fallback:",
+            error.message
+          );
+          usersWithActivity = allUsers.map((user) => ({
+            ...user,
+            last_activity: user.created_at,
+          }));
+        }
+      }
 
       // Sort by last_activity in JavaScript
       usersWithActivity.sort((a, b) => {
@@ -237,42 +251,56 @@ app.get("/api/users", async (req, res) => {
         offset + parseInt(limit)
       );
 
-      // Add metadata for each user
-      const usersWithMetadata = await Promise.all(
-        paginatedUsers.map(async (user) => {
-          // Get session and message counts (keeping existing logic)
-          try {
-            const sessionQuery = `SELECT COUNT(*) as count FROM chat_sessions WHERE user_id = $1`;
-            const sessionResult = await postgres.query(sessionQuery, [user.id]);
-            const sessionCount = parseInt(sessionResult.rows[0]?.count || 0);
+      // OPTIMIZED: Add metadata using bulk query for paginated users
+      let usersWithMetadata = [];
+      if (paginatedUsers.length > 0) {
+        const userIds = paginatedUsers.map((u) => u.id);
+        const placeholders = userIds.map((_, i) => `$${i + 1}`).join(",");
 
-            const messageQuery = `
-              SELECT COUNT(m.*) as count 
-              FROM messages m
-              INNER JOIN chat_sessions cs ON m.session_id = cs.id
-              WHERE cs.user_id = $1
-            `;
-            const messageResult = await postgres.query(messageQuery, [user.id]);
-            const messageCount = parseInt(messageResult.rows[0]?.count || 0);
+        try {
+          const bulkCountQuery = `
+            SELECT 
+              cs.user_id,
+              COUNT(DISTINCT cs.id) as session_count,
+              COUNT(m.id) as message_count
+            FROM chat_sessions cs
+            LEFT JOIN messages m ON cs.id = m.session_id
+            WHERE cs.user_id IN (${placeholders})
+            GROUP BY cs.user_id
+          `;
 
-            return {
-              ...user,
-              session_count: sessionCount,
-              message_count: messageCount,
-            };
-          } catch (error) {
-            console.warn(
-              `Error getting metadata for user ${user.id}:`,
-              error.message
-            );
-            return {
-              ...user,
+          const countResult = await postgres.query(bulkCountQuery, userIds);
+          const countMap = new Map();
+          countResult.rows.forEach((row) => {
+            countMap.set(row.user_id, {
+              session_count: parseInt(row.session_count || 0),
+              message_count: parseInt(row.message_count || 0),
+            });
+          });
+
+          usersWithMetadata = paginatedUsers.map((user) => {
+            const counts = countMap.get(user.id) || {
               session_count: 0,
               message_count: 0,
             };
-          }
-        })
-      );
+            return {
+              ...user,
+              session_count: counts.session_count,
+              message_count: counts.message_count,
+            };
+          });
+        } catch (error) {
+          console.warn(
+            "Error in bulk count query, using zero counts:",
+            error.message
+          );
+          usersWithMetadata = paginatedUsers.map((user) => ({
+            ...user,
+            session_count: 0,
+            message_count: 0,
+          }));
+        }
+      }
 
       res.json({
         success: true,
@@ -335,63 +363,78 @@ app.get("/api/users", async (req, res) => {
       return;
     }
 
-    // Get chat session counts for each user using PostgreSQL
-    const usersWithMetadata = await Promise.all(
-      (users || []).map(async (user) => {
-        try {
-          // Get session count from PostgreSQL
-          const sessionQuery = `
-            SELECT COUNT(*) as count 
-            FROM chat_sessions 
-            WHERE user_id = $1
-          `;
-          const sessionResult = await postgres.query(sessionQuery, [user.id]);
-          const sessionCount = parseInt(sessionResult.rows[0]?.count || 0);
+    // OPTIMIZED: Single bulk query to get all user metadata at once
+    const userIds = users.map((u) => u.id);
+    let usersWithMetadata = [];
 
-          // Get message count from PostgreSQL
-          const messageQuery = `
-            SELECT COUNT(m.*) as count 
-            FROM messages m
-            INNER JOIN chat_sessions cs ON m.session_id = cs.id
-            WHERE cs.user_id = $1
-          `;
-          const messageResult = await postgres.query(messageQuery, [user.id]);
-          const messageCount = parseInt(messageResult.rows[0]?.count || 0);
+    if (userIds.length > 0) {
+      const placeholders = userIds.map((_, i) => `$${i + 1}`).join(",");
+      const bulkMetadataQuery = `
+        WITH user_stats AS (
+          SELECT 
+            cs.user_id,
+            COUNT(DISTINCT cs.id) as session_count,
+            COUNT(m.id) as message_count,
+            MAX(GREATEST(
+              cs.created_at, 
+              cs.updated_at, 
+              COALESCE(m.timestamp, cs.created_at)
+            )) as last_activity
+          FROM chat_sessions cs
+          LEFT JOIN messages m ON cs.id = m.session_id
+          WHERE cs.user_id IN (${placeholders})
+          GROUP BY cs.user_id
+        )
+        SELECT 
+          user_id,
+          COALESCE(session_count, 0) as session_count,
+          COALESCE(message_count, 0) as message_count,
+          last_activity
+        FROM user_stats
+      `;
 
-          // Get last activity from PostgreSQL
-          const activityQuery = `
-            SELECT updated_at 
-            FROM chat_sessions 
-            WHERE user_id = $1 
-            ORDER BY updated_at DESC 
-            LIMIT 1
-          `;
-          const activityResult = await postgres.query(activityQuery, [user.id]);
-          const lastActivity =
-            activityResult.rows[0]?.updated_at?.toISOString() ||
-            user.last_login ||
-            user.created_at;
+      try {
+        const metadataResult = await postgres.query(bulkMetadataQuery, userIds);
+        const metadataMap = new Map();
+        metadataResult.rows.forEach((row) => {
+          metadataMap.set(row.user_id, row);
+        });
+
+        // Combine Supabase user data with PostgreSQL metadata
+        usersWithMetadata = users.map((user) => {
+          const metadata = metadataMap.get(user.id) || {
+            session_count: 0,
+            message_count: 0,
+            last_activity: user.created_at,
+          };
 
           return sanitizeForJson({
             ...user,
-            session_count: sessionCount,
-            message_count: messageCount,
-            last_activity: lastActivity,
+            session_count: parseInt(metadata.session_count || 0),
+            message_count: parseInt(metadata.message_count || 0),
+            last_activity: metadata.last_activity
+              ? metadata.last_activity.toISOString()
+              : user.last_login || user.created_at,
           });
-        } catch (error) {
-          console.warn(
-            `Error fetching metadata for user ${user.id}:`,
-            error.message
-          );
-          return sanitizeForJson({
+        });
+      } catch (error) {
+        console.warn(
+          "Error in bulk metadata query, falling back to individual queries:",
+          error.message
+        );
+        // Fallback to original approach if bulk query fails
+        usersWithMetadata = users.map((user) =>
+          sanitizeForJson({
             ...user,
             session_count: 0,
             message_count: 0,
             last_activity: user.last_login || user.created_at,
-          });
-        }
-      })
-    );
+          })
+        );
+      }
+    } else {
+      usersWithMetadata = [];
+    }
 
     res.json({
       success: true,
@@ -445,16 +488,35 @@ app.get("/api/users/:userId/sessions", async (req, res) => {
 
     if (userError) throw new Error("User not found");
 
-    // Get sessions with character info using PostgreSQL
+    // OPTIMIZED: Get sessions with character info and last messages in single query
     let sessionsQuery = `
       SELECT 
         cs.*,
         c.name as character_name,
         c.avatar_url as character_avatar,
         c.title as character_title,
-        (SELECT COUNT(*) FROM messages WHERE session_id = cs.id) as message_count
+        COALESCE(msg_stats.message_count, 0) as message_count,
+        last_msg.role as last_message_role,
+        last_msg.content as last_message_content,
+        last_msg.timestamp as last_message_timestamp
       FROM chat_sessions cs
       INNER JOIN characters c ON cs.character_id = c.id
+      LEFT JOIN (
+        SELECT 
+          session_id,
+          COUNT(*) as message_count
+        FROM messages
+        GROUP BY session_id
+      ) msg_stats ON cs.id = msg_stats.session_id
+      LEFT JOIN (
+        SELECT DISTINCT ON (session_id)
+          session_id,
+          role,
+          content,
+          timestamp
+        FROM messages
+        ORDER BY session_id, timestamp DESC
+      ) last_msg ON cs.id = last_msg.session_id
       WHERE cs.user_id = $1
     `;
 
@@ -484,48 +546,37 @@ app.get("/api/users/:userId/sessions", async (req, res) => {
     const countResult = await postgres.query(countQuery, [userId]);
     const totalCount = parseInt(countResult.rows[0]?.total || 0);
 
-    // Get last message for each session
-    const sessionsWithLastMessage = await Promise.all(
-      sessions.map(async (session) => {
-        try {
-          const lastMessageQuery = `
-            SELECT role, content, timestamp 
-            FROM messages 
-            WHERE session_id = $1 
-            ORDER BY timestamp DESC 
-            LIMIT 1
-          `;
-          const messageResult = await postgres.query(lastMessageQuery, [
-            session.id,
-          ]);
-          const lastMessage = messageResult.rows[0] || null;
+    // Process sessions data (last message already included from optimized query)
+    const sessionsWithLastMessage = sessions.map((session) => {
+      const lastMessage = session.last_message_role
+        ? {
+            role: session.last_message_role,
+            content: session.last_message_content,
+            timestamp: session.last_message_timestamp
+              ? session.last_message_timestamp.toISOString()
+              : null,
+          }
+        : null;
 
-          return sanitizeForJson({
-            ...session,
-            created_at: session.created_at
-              ? session.created_at.toISOString()
-              : null,
-            updated_at: session.updated_at
-              ? session.updated_at.toISOString()
-              : null,
-            last_message: lastMessage
-              ? {
-                  ...lastMessage,
-                  timestamp: lastMessage.timestamp
-                    ? lastMessage.timestamp.toISOString()
-                    : null,
-                }
-              : null,
-          });
-        } catch (error) {
-          console.warn(
-            `Error fetching last message for session ${session.id}:`,
-            error.message
-          );
-          return sanitizeForJson(session);
-        }
-      })
-    );
+      return sanitizeForJson({
+        id: session.id,
+        title: session.title,
+        created_at: session.created_at
+          ? session.created_at.toISOString()
+          : null,
+        updated_at: session.updated_at
+          ? session.updated_at.toISOString()
+          : null,
+        status: session.status,
+        is_archived: session.is_archived,
+        character_id: session.character_id,
+        character_name: session.character_name,
+        character_avatar: session.character_avatar,
+        character_title: session.character_title,
+        message_count: parseInt(session.message_count || 0),
+        last_message: lastMessage,
+      });
+    });
 
     res.json({
       success: true,
@@ -1417,6 +1468,12 @@ app.get("/", (req, res) => {
         let currentlyViewingUserId = null;
         let usersPagination = null;
         
+        // Chat message pagination state
+        let currentMessagePage = 1;
+        let messagesPerPage = 100;
+        let totalMessages = 0;
+        let chatPagination = null;
+        
         // URL query string helpers
         function getQueryParams() {
             const params = new URLSearchParams(window.location.search);
@@ -1730,6 +1787,13 @@ app.get("/", (req, res) => {
             navigateToPage(page);
         }
         
+        // Chat message pagination function
+        function goToChatPage(page) {
+            if (currentSession && page >= 1 && page <= chatPagination.totalPages) {
+                showChatMessages(currentSession.id, currentSession.title, page);
+            }
+        }
+        
         function generatePageNumbers(pagination) {
             const pages = [];
             const current = pagination.page;
@@ -1848,8 +1912,9 @@ app.get("/", (req, res) => {
         }
         
         // Show chat messages
-        async function showChatMessages(sessionId, title) {
+        async function showChatMessages(sessionId, title, page = 1) {
             currentSession = { id: sessionId, title: title };
+            currentMessagePage = page;
             
             document.getElementById('breadcrumb-chat-title').textContent = title;
             
@@ -1859,17 +1924,33 @@ app.get("/", (req, res) => {
             chatContent.innerHTML = '<div class="loading"><div class="spinner"></div> Loading messages...</div>';
             
             try {
-                const response = await fetch(\`/api/sessions/\${sessionId}/messages?limit=100\`);
+                const offset = (currentMessagePage - 1) * messagesPerPage;
+                const response = await fetch(\`/api/sessions/\${sessionId}/messages?limit=\${messagesPerPage}&offset=\${offset}\`);
                 const result = await response.json();
                 
                 if (!result.success) {
                     throw new Error(result.error);
                 }
                 
+                // Store pagination info
+                totalMessages = result.total_messages;
+                chatPagination = {
+                    page: currentMessagePage,
+                    limit: messagesPerPage,
+                    total: totalMessages,
+                    totalPages: Math.ceil(totalMessages / messagesPerPage),
+                    hasNext: result.pagination.has_more,
+                    hasPrev: currentMessagePage > 1,
+                    offset: offset
+                };
+                
                 renderChatMessages(result.session, result.messages);
                 
+                // Update message info with pagination details
+                const start = offset + 1;
+                const end = Math.min(offset + result.messages.length, totalMessages);
                 document.getElementById('message-info').textContent = 
-                    \`\${result.messages.length} of \${result.total_messages} messages\`;
+                    \`Showing \${start} to \${end} of \${totalMessages} messages\`;
                 
             } catch (error) {
                 console.error('Error loading messages:', error);
@@ -1885,6 +1966,22 @@ app.get("/", (req, res) => {
                 return;
             }
             
+            // Generate pagination controls HTML
+            const paginationHtml = chatPagination && chatPagination.totalPages > 1 ? \`
+                <div class="pagination">
+                    <div class="pagination-info">
+                        Page \${chatPagination.page} of \${chatPagination.totalPages} • \${chatPagination.total} total messages
+                    </div>
+                    <div class="pagination-controls">
+                        <button class="pagination-btn" \${!chatPagination.hasPrev ? 'disabled' : ''} onclick="goToChatPage(1)">First</button>
+                        <button class="pagination-btn" \${!chatPagination.hasPrev ? 'disabled' : ''} onclick="goToChatPage(\${chatPagination.page - 1})">Previous</button>
+                        <span class="pagination-btn active">\${chatPagination.page}</span>
+                        <button class="pagination-btn" \${!chatPagination.hasNext ? 'disabled' : ''} onclick="goToChatPage(\${chatPagination.page + 1})">Next</button>
+                        <button class="pagination-btn" \${!chatPagination.hasNext ? 'disabled' : ''} onclick="goToChatPage(\${chatPagination.totalPages})">Last</button>
+                    </div>
+                </div>
+            \` : '';
+            
             const chatHtml = \`
                 <div class="chat-container">
                     <div class="chat-header">
@@ -1896,6 +1993,7 @@ app.get("/", (req, res) => {
                             \${(!session.status || session.status === 'live') ? ' • <span style="color: #059669; font-weight: 600;">✅ LIVE</span>' : ''}
                         </p>
                     </div>
+                    \${paginationHtml}
                     <div class="chat-messages">
                         \${messages.map(message => \`
                             <div class="message \${message.role}">
@@ -1917,14 +2015,21 @@ app.get("/", (req, res) => {
                             </div>
                         \`).join('')}
                     </div>
+                    \${paginationHtml}
                 </div>
             \`;
             
             chatContent.innerHTML = chatHtml;
             
-            // Scroll to bottom
+            // Scroll to top for new page loads (instead of bottom)
             const chatMessages = chatContent.querySelector('.chat-messages');
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+            if (currentMessagePage === 1) {
+                // Scroll to bottom for first page (most recent messages)
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            } else {
+                // Scroll to top for other pages (older messages)
+                chatMessages.scrollTop = 0;
+            }
         }
         
         // View management
@@ -1939,12 +2044,18 @@ app.get("/", (req, res) => {
             showView('users-view');
             currentUser = null;
             currentSession = null;
+            // Reset chat pagination
+            currentMessagePage = 1;
+            chatPagination = null;
         }
         
         function showSessionsView() {
             if (currentUser) {
                 showView('sessions-view');
                 currentSession = null;
+                // Reset chat pagination
+                currentMessagePage = 1;
+                chatPagination = null;
             } else {
                 showUsersView();
             }
