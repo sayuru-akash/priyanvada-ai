@@ -156,7 +156,7 @@ app.get("/api/users", async (req, res) => {
   try {
     const {
       search = "",
-      sortBy = "created_at",
+      sortBy = "last_activity",
       order = "desc",
       limit = 30,
       page = 1,
@@ -182,10 +182,116 @@ app.get("/api/users", async (req, res) => {
       );
     }
 
-    // Add sorting
-    query = query.order(sortBy, { ascending: order === "asc" });
+    // For last_activity sorting, we need to get all users first, then sort by PostgreSQL data
+    if (sortBy === "last_activity") {
+      // Get ALL users (no pagination yet) to calculate last activity
+      const { data: allUsers, error } = await query;
+      if (error) {
+        console.error("Error fetching users:", error.message);
+        throw error;
+      }
 
-    // Add pagination
+      // Get last activity for each user from PostgreSQL
+      const usersWithActivity = await Promise.all(
+        (allUsers || []).map(async (user) => {
+          try {
+            const lastActivityQuery = `
+              SELECT MAX(GREATEST(cs.created_at, cs.updated_at, 
+                COALESCE((SELECT MAX(timestamp) FROM messages WHERE session_id = cs.id), cs.created_at)
+              )) as last_activity
+              FROM chat_sessions cs 
+              WHERE user_id = $1
+            `;
+            const activityResult = await postgres.query(lastActivityQuery, [
+              user.id,
+            ]);
+            const lastActivity = activityResult.rows[0]?.last_activity;
+
+            return {
+              ...user,
+              last_activity: lastActivity,
+            };
+          } catch (error) {
+            console.warn(
+              `Error getting activity for user ${user.id}:`,
+              error.message
+            );
+            return {
+              ...user,
+              last_activity: user.created_at, // fallback to created_at
+            };
+          }
+        })
+      );
+
+      // Sort by last_activity in JavaScript
+      usersWithActivity.sort((a, b) => {
+        const aTime = new Date(a.last_activity || a.created_at);
+        const bTime = new Date(b.last_activity || b.created_at);
+        return order === "asc" ? aTime - bTime : bTime - aTime;
+      });
+
+      // Apply pagination after sorting
+      const totalUsers = usersWithActivity.length;
+      const paginatedUsers = usersWithActivity.slice(
+        offset,
+        offset + parseInt(limit)
+      );
+
+      // Add metadata for each user
+      const usersWithMetadata = await Promise.all(
+        paginatedUsers.map(async (user) => {
+          // Get session and message counts (keeping existing logic)
+          try {
+            const sessionQuery = `SELECT COUNT(*) as count FROM chat_sessions WHERE user_id = $1`;
+            const sessionResult = await postgres.query(sessionQuery, [user.id]);
+            const sessionCount = parseInt(sessionResult.rows[0]?.count || 0);
+
+            const messageQuery = `
+              SELECT COUNT(m.*) as count 
+              FROM messages m
+              INNER JOIN chat_sessions cs ON m.session_id = cs.id
+              WHERE cs.user_id = $1
+            `;
+            const messageResult = await postgres.query(messageQuery, [user.id]);
+            const messageCount = parseInt(messageResult.rows[0]?.count || 0);
+
+            return {
+              ...user,
+              session_count: sessionCount,
+              message_count: messageCount,
+            };
+          } catch (error) {
+            console.warn(
+              `Error getting metadata for user ${user.id}:`,
+              error.message
+            );
+            return {
+              ...user,
+              session_count: 0,
+              message_count: 0,
+            };
+          }
+        })
+      );
+
+      res.json({
+        success: true,
+        users: usersWithMetadata,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: totalUsers,
+          totalPages: Math.ceil(totalUsers / parseInt(limit)),
+          hasNext: offset + parseInt(limit) < totalUsers,
+          hasPrev: parseInt(page) > 1,
+        },
+      });
+      return;
+    }
+
+    // For non-last_activity sorting, use original Supabase sorting
+    query = query.order(sortBy, { ascending: order === "asc" });
     query = query.range(offset, offset + parseInt(limit) - 1);
 
     const { data: users, error } = await query;
@@ -1217,7 +1323,7 @@ app.get("/", (req, res) => {
                         <option value="created_at">Sort by Join Date</option>
                         <option value="last_login">Sort by Last Login</option>
                         <option value="username">Sort by Username</option>
-                        <option value="updated_at">Sort by Activity</option>
+                        <option value="last_activity" selected>Sort by Last Activity</option>
                     </select>
                     <select id="user-order" class="select-box">
                         <option value="desc">Newest First</option>
@@ -1308,6 +1414,8 @@ app.get("/", (req, res) => {
         let allUsers = [];
         let allSessions = [];
         let currentUserPage = 1;
+        let currentSessionPage = 1;
+        let currentlyViewingUserId = null;
         let usersPagination = null;
         
         // Initialize app
@@ -1350,6 +1458,34 @@ app.get("/", (req, res) => {
                 if (usersPagination) {
                     currentUserPage = usersPagination.totalPages;
                     loadUsers();
+                }
+            });
+            
+            // Add event listeners for user sort dropdowns
+            document.getElementById('user-sort').addEventListener('change', () => {
+                currentUserPage = 1; // Reset to first page when sorting changes
+                loadUsers();
+            });
+            
+            document.getElementById('user-order').addEventListener('change', () => {
+                currentUserPage = 1; // Reset to first page when sorting changes
+                loadUsers();
+            });
+            
+            // Add event listeners for session sort dropdowns
+            document.getElementById('session-sort').addEventListener('change', () => {
+                const userId = currentlyViewingUserId;
+                if (userId && currentUser) {
+                    currentSessionPage = 1; // Reset to first page when sorting changes
+                    showUserSessions(userId, currentUser.username);
+                }
+            });
+            
+            document.getElementById('session-order').addEventListener('change', () => {
+                const userId = currentlyViewingUserId;
+                if (userId && currentUser) {
+                    currentSessionPage = 1; // Reset to first page when sorting changes
+                    showUserSessions(userId, currentUser.username);
                 }
             });
         }
@@ -1576,6 +1712,7 @@ app.get("/", (req, res) => {
         // Show user sessions
         async function showUserSessions(userId, username) {
             currentUser = { id: userId, username: username };
+            currentlyViewingUserId = userId; // Track currently viewing user for sort changes
             
             document.getElementById('current-user-name').textContent = username;
             document.getElementById('breadcrumb-user-name').textContent = username;
@@ -1590,6 +1727,7 @@ app.get("/", (req, res) => {
                 const order = document.getElementById('session-order').value;
                 
                 const params = new URLSearchParams({
+                    page: currentSessionPage,
                     sortBy,
                     order,
                     limit: 25
