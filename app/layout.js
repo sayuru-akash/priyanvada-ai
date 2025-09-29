@@ -29,7 +29,7 @@ export const metadata = {
     siteName: "PRIYANVADA AI",
     images: [
       {
-        url: "/images/thumbnail.jpg",
+        url: "/images/cover-img.png",
         width: 1200,
         height: 630,
         alt: "PRIYANVADA AI - Chat with Your Favorite Characters",
@@ -42,7 +42,7 @@ export const metadata = {
     card: "summary_large_image",
     title: "PRIYANVADA AI - Bringing Your Favorite Characters to Life",
     description: "මොහාන් රාජ් මඩවලගේ ලෝකයට පිවිසෙමු..",
-    images: ["/images/thumbnail.jpg"],
+    images: ["/images/cover-img.png"],
     creator: "@priyanvada_ai",
     site: "@priyanvada_ai",
   },
