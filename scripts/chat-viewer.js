@@ -725,62 +725,6 @@ app.get("/api/stats", async (req, res) => {
   }
 });
 
-// Debug endpoint to check avatar URLs
-app.get("/api/debug/avatars", async (req, res) => {
-  try {
-    const { data: usersWithAvatars, error } = await supabase
-      .from("users")
-      .select("id, username, avatar_url")
-      .not("avatar_url", "is", null)
-      .neq("avatar_url", "")
-      .limit(10);
-
-    if (error) throw error;
-
-    res.json({
-      success: true,
-      sample_users_with_avatars: usersWithAvatars,
-      count: usersWithAvatars?.length || 0,
-    });
-  } catch (error) {
-    console.error("Error fetching avatar debug info:", error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
-  }
-});
-
-// Debug image test endpoint
-app.get("/debug/image-test", (req, res) => {
-  res.send(`<!DOCTYPE html>
-<html>
-<head>
-    <title>Image Test</title>
-</head>
-<body>
-    <h1>Image Loading Test</h1>
-    <div>
-        <h3>Test Google Avatar:</h3>
-        <img src="https://lh3.googleusercontent.com/a/ACg8ocI-8QuWhQsBvWXMjNvzbPDlNWcCHndBDCL1fp30bzmkFNbgWkiI=s96-c" 
-             style="width: 50px; height: 50px; border-radius: 50%;"
-             onload="console.log('Image loaded successfully')"
-             onerror="console.log('Image failed to load'); this.style.border='2px solid red';">
-    </div>
-    <div>
-        <h3>Another Test Image:</h3>
-        <img src="https://lh3.googleusercontent.com/a/ACg8ocLNRtujJNGItyAqGDzA3EooVH8DIBlpmGVMoozuhRHza_sFl4E=s96-c" 
-             style="width: 50px; height: 50px; border-radius: 50%;"
-             onload="console.log('Image 2 loaded successfully')"
-             onerror="console.log('Image 2 failed to load'); this.style.border='2px solid red';">
-    </div>
-    <script>
-        console.log('Image test page loaded');
-    </script>
-</body>
-</html>`);
-});
-
 // Serve the main HTML page
 app.get("/", (req, res) => {
   res.send(`<!DOCTYPE html>
@@ -1362,9 +1306,6 @@ app.get("/", (req, res) => {
         <div class="header">
             <h1>💬 Chat Viewer</h1>
             <p>Browse users, chat sessions, and view conversations</p>
-            <p style="font-size: 0.9rem; opacity: 0.8; margin-top: 0.5rem;">
-                💡 Users with Google profile pictures show avatars, others show initials
-            </p>
         </div>
         
         <div id="stats-section">
@@ -1654,8 +1595,6 @@ app.get("/", (req, res) => {
                 usersContent.innerHTML = '<div class="loading">No users found.</div>';
                 return;
             }
-            
-            console.log('Rendering users with avatars:', users.filter(u => u.avatar_url).map(u => ({username: u.username, avatar_url: u.avatar_url})));
             
             const usersHtml = \`
                 <div class="users-grid">
