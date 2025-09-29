@@ -952,6 +952,23 @@ app.get("/", (req, res) => {
             font-style: italic;
         }
         
+        /* Status indicators */
+        .session-meta span[style*="color: #dc2626"] {
+            background: #fef2f2;
+            padding: 0.125rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            border: 1px solid #fecaca;
+        }
+        
+        .session-meta span[style*="color: #059669"] {
+            background: #f0fdf4;
+            padding: 0.125rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            border: 1px solid #bbf7d0;
+        }
+        
         .session-stats {
             position: absolute;
             right: 1.5rem;
@@ -985,6 +1002,25 @@ app.get("/", (req, res) => {
             background: #f8fafc;
             padding: 1.5rem;
             border-bottom: 1px solid #e5e7eb;
+        }
+        
+        /* Chat header status indicators */
+        .chat-header span[style*="color: #dc2626"] {
+            background: #fef2f2;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            border: 1px solid #fecaca;
+            margin-left: 0.5rem;
+        }
+        
+        .chat-header span[style*="color: #059669"] {
+            background: #f0fdf4;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            border: 1px solid #bbf7d0;
+            margin-left: 0.5rem;
         }
         
         .chat-messages {
@@ -1600,6 +1636,8 @@ app.get("/", (req, res) => {
                                         <strong>\${session.character_name}</strong> • 
                                         Created \${formatRelativeTime(session.created_at)}
                                         \${session.is_archived ? ' • <span style="color: #ef4444;">Archived</span>' : ''}
+                                        \${session.status === 'deleted' ? ' • <span style="color: #dc2626; font-weight: 600;">🗑️ DELETED</span>' : ''}
+                                        \${(!session.status || session.status === 'live') ? ' • <span style="color: #059669;">✅ Live</span>' : ''}
                                     </div>
                                     \${session.last_message ? \`
                                         <div class="session-preview">
@@ -1665,6 +1703,8 @@ app.get("/", (req, res) => {
                         <p><strong>\${session.character_name}</strong> conversation with <strong>\${session.user_name}</strong></p>
                         <p style="margin-top: 0.5rem; color: #6b7280; font-size: 0.875rem;">
                             Started \${formatDateTime(session.created_at)} • Last activity \${formatDateTime(session.updated_at)}
+                            \${session.status === 'deleted' ? ' • <span style="color: #dc2626; font-weight: 600;">🗑️ SOFT DELETED</span>' : ''}
+                            \${(!session.status || session.status === 'live') ? ' • <span style="color: #059669; font-weight: 600;">✅ LIVE</span>' : ''}
                         </p>
                     </div>
                     <div class="chat-messages">

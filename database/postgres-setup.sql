@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS chat_sessions (
     character_id UUID REFERENCES characters(id) ON DELETE CASCADE,
     title VARCHAR DEFAULT 'New Chat',
     is_archived BOOLEAN DEFAULT FALSE,
+    status VARCHAR(20) DEFAULT 'live' CHECK (status IN ('live', 'deleted')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -68,6 +69,7 @@ CREATE INDEX IF NOT EXISTS idx_chat_sessions_user_id ON chat_sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_chat_sessions_character_id ON chat_sessions(character_id);
 CREATE INDEX IF NOT EXISTS idx_chat_sessions_updated_at ON chat_sessions(updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_chat_sessions_is_archived ON chat_sessions(is_archived);
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_status ON chat_sessions(status);
 
 CREATE INDEX IF NOT EXISTS idx_messages_session_id ON messages(session_id);
 CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp);
