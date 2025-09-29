@@ -1417,8 +1417,47 @@ app.get("/", (req, res) => {
         let currentlyViewingUserId = null;
         let usersPagination = null;
         
+        // URL query string helpers
+        function getQueryParams() {
+            const params = new URLSearchParams(window.location.search);
+            return {
+                page: parseInt(params.get('page')) || 1,
+                search: params.get('search') || '',
+                sortBy: params.get('sortBy') || 'last_activity',
+                order: params.get('order') || 'desc'
+            };
+        }
+        
+        function updateURL(params) {
+            const url = new URL(window.location);
+            Object.keys(params).forEach(key => {
+                if (params[key]) {
+                    url.searchParams.set(key, params[key]);
+                } else {
+                    url.searchParams.delete(key);
+                }
+            });
+            window.history.pushState({}, '', url);
+        }
+        
+        function navigateToPage(page) {
+            const params = getQueryParams();
+            params.page = page;
+            updateURL(params);
+            window.location.reload(); // Force full page refresh
+        }
+        
         // Initialize app
         document.addEventListener('DOMContentLoaded', function() {
+            // Get URL parameters
+            const params = getQueryParams();
+            currentUserPage = params.page;
+            
+            // Set form values from URL
+            document.getElementById('user-search').value = params.search;
+            document.getElementById('user-sort').value = params.sortBy;
+            document.getElementById('user-order').value = params.order;
+            
             loadStats();
             loadUsers();
             setupEventListeners();
@@ -1426,49 +1465,57 @@ app.get("/", (req, res) => {
         
         function setupEventListeners() {
             document.getElementById('search-users-btn').addEventListener('click', () => {
-                currentUserPage = 1;
-                searchUsers();
+                const params = getQueryParams();
+                params.page = 1;
+                params.search = document.getElementById('user-search').value;
+                updateURL(params);
+                window.location.reload();
             });
             document.getElementById('user-search').addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
-                    currentUserPage = 1;
-                    searchUsers();
+                    const params = getQueryParams();
+                    params.page = 1;
+                    params.search = document.getElementById('user-search').value;
+                    updateURL(params);
+                    window.location.reload();
                 }
             });
             
             // Pagination event listeners
             document.getElementById('users-first-btn').addEventListener('click', () => {
-                currentUserPage = 1;
-                loadUsers();
+                navigateToPage(1);
             });
             document.getElementById('users-prev-btn').addEventListener('click', () => {
                 if (currentUserPage > 1) {
-                    currentUserPage--;
-                    loadUsers();
+                    navigateToPage(currentUserPage - 1);
                 }
             });
             document.getElementById('users-next-btn').addEventListener('click', () => {
                 if (usersPagination && usersPagination.hasNext) {
-                    currentUserPage++;
-                    loadUsers();
+                    navigateToPage(currentUserPage + 1);
                 }
             });
             document.getElementById('users-last-btn').addEventListener('click', () => {
                 if (usersPagination) {
-                    currentUserPage = usersPagination.totalPages;
-                    loadUsers();
+                    navigateToPage(usersPagination.totalPages);
                 }
             });
             
             // Add event listeners for user sort dropdowns
             document.getElementById('user-sort').addEventListener('change', () => {
-                currentUserPage = 1; // Reset to first page when sorting changes
-                loadUsers();
+                const params = getQueryParams();
+                params.page = 1;
+                params.sortBy = document.getElementById('user-sort').value;
+                updateURL(params);
+                window.location.reload();
             });
             
             document.getElementById('user-order').addEventListener('change', () => {
-                currentUserPage = 1; // Reset to first page when sorting changes
-                loadUsers();
+                const params = getQueryParams();
+                params.page = 1;
+                params.order = document.getElementById('user-order').value;
+                updateURL(params);
+                window.location.reload();
             });
             
             // Add event listeners for session sort dropdowns
@@ -1502,6 +1549,12 @@ app.get("/", (req, res) => {
         function handleApiError(error, fallback = {}) {
             console.error('API Error:', error);
             return fallback;
+        }
+        
+        function sanitizeUrl(url) {
+            if (!url || typeof url !== 'string') return '';
+            // Escape any quotes or special characters that might break the template
+            return url.replace(/"/g, '&quot;').replace(/'/g, '&#x27;');
         }
         
         // Load statistics
@@ -1602,8 +1655,8 @@ app.get("/", (req, res) => {
                         <div class="user-card" onclick="showUserSessions('\${user.id}', '\${user.username || 'Unknown'}')">
                             <div class="user-header">
                                 <div class="user-avatar">
-                                    \${user.avatar_url && user.avatar_url.trim() !== '' ? 
-                                        \`<img src="\${user.avatar_url}" alt="\${user.username}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">\` : 
+                                    \${user.avatar_url ? 
+                                        \`<img src="\${user.avatar_url}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">\` : 
                                         (user.username ? user.username.charAt(0).toUpperCase() : 'U')
                                     }
                                 </div>
@@ -1674,8 +1727,7 @@ app.get("/", (req, res) => {
         }
         
         function goToUserPage(page) {
-            currentUserPage = page;
-            loadUsers();
+            navigateToPage(page);
         }
         
         function generatePageNumbers(pagination) {
@@ -1762,8 +1814,8 @@ app.get("/", (req, res) => {
                         <div class="session-item" onclick="showChatMessages('\${session.id}', '\${session.title}')">
                             <div class="session-header">
                                 <div class="character-avatar">
-                                    \${session.character_avatar && session.character_avatar.trim() !== '' ? 
-                                        \`<img src="\${session.character_avatar}" alt="\${session.character_name}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">\` : 
+                                    \${session.character_avatar ? 
+                                        \`<img src="\${session.character_avatar}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">\` : 
                                         (session.character_name ? session.character_name.charAt(0).toUpperCase() : 'C')
                                     }
                                 </div>
