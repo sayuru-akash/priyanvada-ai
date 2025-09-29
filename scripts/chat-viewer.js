@@ -181,86 +181,34 @@ app.get("/api/users", async (req, res) => {
       );
     }
 
-    // For last_activity sorting, we need to get all users first, then sort by PostgreSQL data
-    if (sortBy === "last_activity") {
-      // Get ALL users (no pagination yet) to calculate last activity
+    // For last_activity, message_count, or session_count sorting, we need to get all users first, then sort by PostgreSQL data
+    if (
+      sortBy === "last_activity" ||
+      sortBy === "message_count" ||
+      sortBy === "session_count"
+    ) {
+      // Get ALL users (no pagination yet) to calculate activity and counts
       const { data: allUsers, error } = await query;
       if (error) {
         console.error("Error fetching users:", error.message);
         throw error;
       }
 
-      // OPTIMIZED: Single bulk query to get last activity for all users
-      let usersWithActivity = [];
+      // OPTIMIZED: Single bulk query to get activity and counts for all users
+      let usersWithData = [];
       if (allUsers && allUsers.length > 0) {
         const userIds = allUsers.map((u) => u.id);
         const placeholders = userIds.map((_, i) => `$${i + 1}`).join(",");
 
         try {
-          const bulkActivityQuery = `
+          const bulkDataQuery = `
             SELECT 
               cs.user_id,
               MAX(GREATEST(
                 cs.created_at, 
                 cs.updated_at, 
                 COALESCE(m.timestamp, cs.created_at)
-              )) as last_activity
-            FROM chat_sessions cs
-            LEFT JOIN messages m ON cs.id = m.session_id
-            WHERE cs.user_id IN (${placeholders})
-            GROUP BY cs.user_id
-          `;
-
-          const activityResult = await postgres.query(
-            bulkActivityQuery,
-            userIds
-          );
-          const activityMap = new Map();
-          activityResult.rows.forEach((row) => {
-            activityMap.set(row.user_id, row.last_activity);
-          });
-
-          // Combine user data with activity data
-          usersWithActivity = allUsers.map((user) => ({
-            ...user,
-            last_activity: activityMap.get(user.id) || user.created_at,
-          }));
-        } catch (error) {
-          console.warn(
-            "Error in bulk activity query, using created_at as fallback:",
-            error.message
-          );
-          usersWithActivity = allUsers.map((user) => ({
-            ...user,
-            last_activity: user.created_at,
-          }));
-        }
-      }
-
-      // Sort by last_activity in JavaScript
-      usersWithActivity.sort((a, b) => {
-        const aTime = new Date(a.last_activity || a.created_at);
-        const bTime = new Date(b.last_activity || b.created_at);
-        return order === "asc" ? aTime - bTime : bTime - aTime;
-      });
-
-      // Apply pagination after sorting
-      const totalUsers = usersWithActivity.length;
-      const paginatedUsers = usersWithActivity.slice(
-        offset,
-        offset + parseInt(limit)
-      );
-
-      // OPTIMIZED: Add metadata using bulk query for paginated users
-      let usersWithMetadata = [];
-      if (paginatedUsers.length > 0) {
-        const userIds = paginatedUsers.map((u) => u.id);
-        const placeholders = userIds.map((_, i) => `$${i + 1}`).join(",");
-
-        try {
-          const bulkCountQuery = `
-            SELECT 
-              cs.user_id,
+              )) as last_activity,
               COUNT(DISTINCT cs.id) as session_count,
               COUNT(m.id) as message_count
             FROM chat_sessions cs
@@ -269,42 +217,72 @@ app.get("/api/users", async (req, res) => {
             GROUP BY cs.user_id
           `;
 
-          const countResult = await postgres.query(bulkCountQuery, userIds);
-          const countMap = new Map();
-          countResult.rows.forEach((row) => {
-            countMap.set(row.user_id, {
+          const dataResult = await postgres.query(bulkDataQuery, userIds);
+          const dataMap = new Map();
+          dataResult.rows.forEach((row) => {
+            dataMap.set(row.user_id, {
+              last_activity: row.last_activity,
               session_count: parseInt(row.session_count || 0),
               message_count: parseInt(row.message_count || 0),
             });
           });
 
-          usersWithMetadata = paginatedUsers.map((user) => {
-            const counts = countMap.get(user.id) || {
+          // Combine user data with PostgreSQL data
+          usersWithData = allUsers.map((user) => {
+            const data = dataMap.get(user.id) || {
+              last_activity: user.created_at,
               session_count: 0,
               message_count: 0,
             };
             return {
               ...user,
-              session_count: counts.session_count,
-              message_count: counts.message_count,
+              last_activity: data.last_activity || user.created_at,
+              session_count: data.session_count,
+              message_count: data.message_count,
             };
           });
         } catch (error) {
           console.warn(
-            "Error in bulk count query, using zero counts:",
+            "Error in bulk data query, using fallback values:",
             error.message
           );
-          usersWithMetadata = paginatedUsers.map((user) => ({
+          usersWithData = allUsers.map((user) => ({
             ...user,
+            last_activity: user.created_at,
             session_count: 0,
             message_count: 0,
           }));
         }
       }
 
+      // Sort by the selected field in JavaScript
+      usersWithData.sort((a, b) => {
+        if (sortBy === "last_activity") {
+          const aTime = new Date(a.last_activity || a.created_at);
+          const bTime = new Date(b.last_activity || b.created_at);
+          return order === "asc" ? aTime - bTime : bTime - aTime;
+        } else if (sortBy === "message_count") {
+          return order === "asc"
+            ? a.message_count - b.message_count
+            : b.message_count - a.message_count;
+        } else if (sortBy === "session_count") {
+          return order === "asc"
+            ? a.session_count - b.session_count
+            : b.session_count - a.session_count;
+        }
+        return 0;
+      });
+
+      // Apply pagination after sorting
+      const totalUsers = usersWithData.length;
+      const paginatedUsers = usersWithData.slice(
+        offset,
+        offset + parseInt(limit)
+      );
+
       res.json({
         success: true,
-        users: usersWithMetadata,
+        users: paginatedUsers,
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
@@ -1374,6 +1352,8 @@ app.get("/", (req, res) => {
                         <option value="last_login">Sort by Last Login</option>
                         <option value="username">Sort by Username</option>
                         <option value="last_activity" selected>Sort by Last Activity</option>
+                        <option value="message_count">Sort by Messages</option>
+                        <option value="session_count">Sort by Sessions</option>
                     </select>
                     <select id="user-order" class="select-box">
                         <option value="desc">Newest First</option>
@@ -1497,6 +1477,27 @@ app.get("/", (req, res) => {
             window.history.pushState({}, '', url);
         }
         
+        function updateOrderDropdownLabels(sortBy) {
+            const orderDropdown = document.getElementById('user-order');
+            const isCountBased = sortBy === 'message_count' || sortBy === 'session_count';
+            
+            if (isCountBased) {
+                // For count-based sorts, use "Highest First" and "Lowest First"
+                orderDropdown.innerHTML = '<option value="desc">Highest First</option>' +
+                                         '<option value="asc">Lowest First</option>';
+            } else {
+                // For date/time-based sorts, use "Newest First" and "Oldest First"
+                orderDropdown.innerHTML = '<option value="desc">Newest First</option>' +
+                                         '<option value="asc">Oldest First</option>';
+            }
+            
+            // Preserve the current order selection if possible
+            const params = getQueryParams();
+            if (params.order) {
+                orderDropdown.value = params.order;
+            }
+        }
+        
         function navigateToPage(page) {
             const params = getQueryParams();
             params.page = page;
@@ -1514,6 +1515,9 @@ app.get("/", (req, res) => {
             document.getElementById('user-search').value = params.search;
             document.getElementById('user-sort').value = params.sortBy;
             document.getElementById('user-order').value = params.order;
+            
+            // Update order dropdown labels based on initial sort
+            updateOrderDropdownLabels(params.sortBy);
             
             loadStats();
             loadUsers();
@@ -1563,6 +1567,10 @@ app.get("/", (req, res) => {
                 const params = getQueryParams();
                 params.page = 1;
                 params.sortBy = document.getElementById('user-sort').value;
+                
+                // Update order dropdown labels based on sort type
+                updateOrderDropdownLabels(params.sortBy);
+                
                 updateURL(params);
                 window.location.reload();
             });
