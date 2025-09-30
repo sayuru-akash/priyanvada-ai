@@ -1720,8 +1720,8 @@ app.get("/", (req, res) => {
                         <div class="user-card" onclick="showUserSessions('\${user.id}', '\${user.username || 'Unknown'}')">
                             <div class="user-header">
                                 <div class="user-avatar">
-                                    \${user.avatar_url ? 
-                                        \`<img src="\${user.avatar_url}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">\` : 
+                                    \${user.avatar_url && typeof user.avatar_url === 'string' && user.avatar_url.trim() ? 
+                                        \`<img src="\${sanitizeUrl(user.avatar_url)}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" onerror="this.style.display='none'; this.nextSibling.style.display='flex';" alt="User avatar"><div style="display: none; width: 100%; height: 100%; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 1.2rem;">\${user.username ? user.username.charAt(0).toUpperCase() : 'U'}</div>\` : 
                                         (user.username ? user.username.charAt(0).toUpperCase() : 'U')
                                     }
                                 </div>
@@ -1887,7 +1887,7 @@ app.get("/", (req, res) => {
                             <div class="session-header">
                                 <div class="character-avatar">
                                     \${session.character_avatar ? 
-                                        \`<img src="\${session.character_avatar}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">\` : 
+                                        \`<img src="\${sanitizeUrl(session.character_avatar)}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" onerror="this.style.display='none'; this.nextSibling.style.display='flex';" alt="Character avatar"><div style="display: none; width: 100%; height: 100%; border-radius: 50%; background: #667eea; align-items: center; justify-content: center; color: white; font-weight: 500;">\${session.character_name ? session.character_name.charAt(0).toUpperCase() : 'C'}</div>\` : 
                                         (session.character_name ? session.character_name.charAt(0).toUpperCase() : 'C')
                                     }
                                 </div>
