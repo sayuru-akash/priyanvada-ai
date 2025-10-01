@@ -386,13 +386,35 @@ app.get("/api/users", async (req, res) => {
             last_activity: user.created_at,
           };
 
+          // Safe date handling for last_activity
+          let lastActivity = user.last_login || user.created_at;
+          if (metadata.last_activity) {
+            try {
+              // Check if it's already a Date object or can be converted
+              const activityDate =
+                metadata.last_activity instanceof Date
+                  ? metadata.last_activity
+                  : new Date(metadata.last_activity);
+
+              if (!isNaN(activityDate.getTime())) {
+                lastActivity = activityDate.toISOString();
+              }
+            } catch (e) {
+              console.warn(
+                "Invalid last_activity date for user",
+                user.id,
+                ":",
+                metadata.last_activity
+              );
+              // Fallback to user's login or created date
+            }
+          }
+
           return sanitizeForJson({
             ...user,
             session_count: parseInt(metadata.session_count || 0),
             message_count: parseInt(metadata.message_count || 0),
-            last_activity: metadata.last_activity
-              ? metadata.last_activity.toISOString()
-              : user.last_login || user.created_at,
+            last_activity: lastActivity,
           });
         });
       } catch (error) {
