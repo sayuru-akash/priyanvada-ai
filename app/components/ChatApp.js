@@ -197,16 +197,23 @@ export default function ChatApp() {
           <div className="absolute top-60 right-20 w-96 h-96 bg-purple-300/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
           <div className="absolute bottom-40 left-1/3 w-80 h-80 bg-pink-300/20 rounded-full blur-3xl animate-pulse delay-2000"></div>
         </div>
-        
+
         <div className="relative text-center">
           <div className="relative mb-8">
             <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full blur-2xl opacity-30 animate-pulse"></div>
-            <div className="relative w-24 h-24 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-full flex items-center justify-center shadow-2xl mx-auto animate-spin" style={{animationDuration: '3s'}}>
+            <div
+              className="relative w-24 h-24 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-full flex items-center justify-center shadow-2xl mx-auto animate-spin"
+              style={{ animationDuration: "3s" }}
+            >
               <div className="w-20 h-20 bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50 rounded-full"></div>
             </div>
           </div>
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">Loading...</h2>
-          <p className="text-gray-600">Please wait while we prepare your experience</p>
+          <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
+            Loading...
+          </h2>
+          <p className="text-gray-600">
+            Please wait while we prepare your experience
+          </p>
         </div>
       </div>
     );
