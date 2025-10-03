@@ -412,29 +412,50 @@ export default function ChatInterface({
   if (!session) {
     return (
       <div
-        className={`flex-1 flex flex-col items-center justify-center p-8 min-h-screen transition-all duration-300 ${
+        className={`flex-1 flex flex-col items-center justify-center p-8 min-h-screen transition-all duration-300 bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50 relative overflow-hidden ${
           sidebarOpen ? "md:ml-0" : "md:-ml-80"
         }`}
       >
-        <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center shadow-lg mb-6">
-          <svg
-            className="w-8 h-8 text-white"
-            fill="currentColor"
-            viewBox="0 0 20 20"
-          >
-            <path
-              fillRule="evenodd"
-              d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-              clipRule="evenodd"
-            />
-          </svg>
+        {/* Animated background elements */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+          <div className="absolute top-20 left-10 w-72 h-72 bg-indigo-300/20 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute top-60 right-20 w-96 h-96 bg-purple-300/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+          <div className="absolute bottom-40 left-1/3 w-80 h-80 bg-pink-300/20 rounded-full blur-3xl animate-pulse delay-2000"></div>
         </div>
-        <h2 className="text-3xl font-bold text-gray-600 mb-4">
-          Ready to Chat!
-        </h2>
-        <p className="text-gray-500 text-center max-w-md mb-8 leading-relaxed">
-          Welcome to your AI assistant. You can now start chatting!
-        </p>
+
+        <div className="relative text-center">
+          <div className="relative mb-8">
+            <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full blur-2xl opacity-30 animate-pulse"></div>
+            <div className="relative w-24 h-24 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-full flex items-center justify-center shadow-2xl mx-auto">
+              <svg
+                className="w-12 h-12 text-white"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </div>
+          </div>
+          <h2 className="text-4xl font-extrabold mb-4">
+            <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+              WELCOME TO PRIYANVADA AI
+            </span>
+          </h2>
+          <p className="text-lg text-gray-600 font-medium max-w-md mx-auto mb-8 leading-relaxed">
+            You can now start chatting...
+          </p>
+
+          {/* Decorative element */}
+          <div className="flex items-center justify-center gap-2 text-gray-400">
+            <div className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse"></div>
+            <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse delay-1000"></div>
+            <div className="w-2 h-2 bg-pink-400 rounded-full animate-pulse delay-2000"></div>
+          </div>
+        </div>
       </div>
     );
   }
