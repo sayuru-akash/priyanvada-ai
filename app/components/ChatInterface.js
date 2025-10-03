@@ -16,9 +16,14 @@ export default function ChatInterface({
   const [inputMessage, setInputMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [typing, setTyping] = useState(false);
+  const [uploadedImages, setUploadedImages] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [dragOver, setDragOver] = useState(false);
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const inputRef = useRef(null);
+  const fileInputRef = useRef(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   // Adjust UI when virtual keyboard / viewport changes (mobile browsers)
@@ -92,8 +97,91 @@ export default function ChatInterface({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  const handleImageUpload = async (files) => {
+    if (!files || files.length === 0) return;
+
+    setUploading(true);
+    setUploadProgress(0);
+
+    try {
+      const uploadedImagesList = [];
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+
+        // Update progress
+        setUploadProgress(((i + 1) / files.length) * 100);
+
+        const formData = new FormData();
+        formData.append("image", file);
+
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          uploadedImagesList.push(result.image);
+        } else {
+          console.error("Failed to upload image:", result.error);
+          // You could show a toast notification here
+        }
+      }
+
+      setUploadedImages((prev) => [...prev, ...uploadedImagesList]);
+    } catch (error) {
+      console.error("Upload error:", error);
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+    }
+  };
+
+  const removeUploadedImage = (index) => {
+    setUploadedImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleFileInputChange = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      handleImageUpload(files);
+    }
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setDragOver(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      setDragOver(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragOver(false);
+
+    const files = Array.from(e.dataTransfer.files).filter((file) =>
+      file.type.startsWith("image/")
+    );
+
+    if (files.length > 0) {
+      handleImageUpload(files);
+    }
+  };
+
   const handleSendMessage = async () => {
-    if (!inputMessage.trim() || loading) return;
+    if ((!inputMessage.trim() && uploadedImages.length === 0) || loading)
+      return;
 
     let currentSession = session;
 
@@ -106,12 +194,27 @@ export default function ChatInterface({
     const userMessage = {
       id: Date.now(),
       role: "user",
-      content: inputMessage.trim(),
+      content: inputMessage.trim() || "📷 Image(s) shared",
       timestamp: new Date().toISOString(),
+      images: uploadedImages.length > 0 ? uploadedImages : undefined,
     };
+
+    console.log(
+      `📤 [Frontend] Sending message with ${uploadedImages.length} images`
+    );
+    if (uploadedImages.length > 0) {
+      uploadedImages.forEach((img, index) => {
+        console.log(
+          `📷 [Frontend] Image ${index + 1}: ${img.mimeType}, ${Math.round(
+            img.data.length / 1024
+          )}KB`
+        );
+      });
+    }
 
     setMessages((prev) => [...prev, userMessage]);
     setInputMessage("");
+    setUploadedImages([]); // Clear uploaded images after sending
     setLoading(true);
     setTyping(true);
 
@@ -125,6 +228,7 @@ export default function ChatInterface({
           sessionId: currentSession.id,
           message: userMessage.content,
           characterId: character?.id || currentSession.character_id,
+          images: uploadedImages.length > 0 ? uploadedImages : undefined,
         }),
       });
 
@@ -198,7 +302,7 @@ export default function ChatInterface({
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       e.stopPropagation();
-      if (!loading && inputMessage.trim()) {
+      if (!loading && (inputMessage.trim() || uploadedImages.length > 0)) {
         handleSendMessage();
       }
     }
@@ -276,6 +380,42 @@ export default function ChatInterface({
             {isCharacter && character && (
               <div className="mb-2 text-sm font-semibold text-blue-600">
                 {character.name}
+              </div>
+            )}
+
+            {/* Images display */}
+            {message.images && message.images.length > 0 && (
+              <div className="mb-3">
+                <div
+                  className={`grid gap-2 ${
+                    message.images.length === 1 ? "grid-cols-1" : "grid-cols-2"
+                  }`}
+                >
+                  {message.images.map((image, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={`data:${image.mimeType};base64,${image.data}`}
+                        alt={image.name}
+                        className="rounded-lg max-w-full h-auto max-h-64 object-cover border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
+                        onClick={() => {
+                          // Create a modal or new window to view full image
+                          const newWindow = window.open();
+                          newWindow.document.write(`
+                            <html>
+                              <head><title>${image.name}</title></head>
+                              <body style="margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#000;">
+                                <img src="data:${image.mimeType};base64,${image.data}" style="max-width:100%;max-height:100vh;object-fit:contain;" />
+                              </body>
+                            </html>
+                          `);
+                        }}
+                      />
+                      <div className="absolute bottom-1 left-1 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                        {image.name}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -441,6 +581,31 @@ export default function ChatInterface({
 
   return (
     <div className="flex-1 flex flex-col h-screen bg-white">
+      {/* Drag and Drop Overlay */}
+      {dragOver && (
+        <div className="fixed inset-0 bg-blue-500 bg-opacity-20 border-4 border-dashed border-blue-500 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-8 shadow-xl text-center">
+            <svg
+              className="w-16 h-16 text-blue-500 mx-auto mb-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+              />
+            </svg>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              Drop images here
+            </h3>
+            <p className="text-gray-600">Release to upload your images</p>
+          </div>
+        </div>
+      )}
+
       {/* Simple Header */}
       <div className="bg-white border-b border-gray-200 p-3">
         <div className="flex items-center gap-3">
@@ -468,6 +633,9 @@ export default function ChatInterface({
       <div
         ref={messagesContainerRef}
         className="flex-1 overflow-y-auto bg-gradient-to-b from-gray-50 to-white"
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
       >
         <div className="py-6">
           {memoizedMessages}
@@ -483,6 +651,86 @@ export default function ChatInterface({
           paddingBottom: keyboardHeight ? keyboardHeight + 12 : undefined,
         }}
       >
+        {/* Image Upload Preview */}
+        {uploadedImages.length > 0 && (
+          <div className="max-w-4xl mx-auto mb-4">
+            <div className="flex flex-wrap gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+              {uploadedImages.map((image, index) => (
+                <div key={index} className="relative group">
+                  <div className="w-20 h-20 rounded-lg overflow-hidden border border-gray-300 bg-white">
+                    <img
+                      src={`data:${image.mimeType};base64,${image.data}`}
+                      alt={image.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeUploadedImage(index)}
+                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                  >
+                    ×
+                  </button>
+                  <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 rounded-b-lg truncate">
+                    {image.name}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Upload Progress */}
+        {uploading && (
+          <div className="max-w-4xl mx-auto mb-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="flex items-center gap-3">
+                <svg
+                  className="w-5 h-5 text-blue-600 animate-spin"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+                <div className="flex-1">
+                  <div className="flex justify-between text-sm text-blue-700 mb-1">
+                    <span>Uploading images...</span>
+                    <span>{Math.round(uploadProgress)}%</span>
+                  </div>
+                  <div className="w-full bg-blue-200 rounded-full h-2">
+                    <div
+                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={handleFileInputChange}
+          className="hidden"
+        />
+
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -502,12 +750,12 @@ export default function ChatInterface({
                 }, 50);
               }}
               rows={1}
-              placeholder="Type your message..."
+              placeholder="Type your message or upload images..."
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyPress={handleKeyPress}
               disabled={loading}
-              className="w-full px-6 py-4 pr-16 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 bg-white shadow-sm resize-none min-h-[56px] max-h-32 overflow-y-auto text-gray-900 placeholder-gray-500"
+              className="w-full px-6 py-4 pr-24 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 bg-white shadow-sm resize-none min-h-[56px] max-h-32 overflow-y-auto text-gray-900 placeholder-gray-500"
               style={{
                 height: "auto",
                 minHeight: "56px",
@@ -518,9 +766,30 @@ export default function ChatInterface({
                   Math.min(e.target.scrollHeight, 128) + "px";
               }}
             />
+
+            {/* Image Upload Button */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={loading || uploading}
+              className="absolute right-16 bottom-3 p-3 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+              title="Upload Images"
+            >
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  fillRule="evenodd"
+                  d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </button>
+
+            {/* Send Button */}
             <button
               type="submit"
-              disabled={!inputMessage.trim() || loading}
+              disabled={
+                (!inputMessage.trim() && uploadedImages.length === 0) || loading
+              }
               className="absolute right-3 bottom-3 p-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 transition-all duration-200 shadow-lg"
             >
               {loading ? (

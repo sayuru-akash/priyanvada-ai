@@ -3,7 +3,7 @@ import aiService from "../../../lib/aiService";
 
 export async function POST(request) {
   try {
-    const { sessionId, message } = await request.json();
+    const { sessionId, message, images } = await request.json();
 
     if (!sessionId || !message) {
       return Response.json(
@@ -27,21 +27,69 @@ export async function POST(request) {
       return Response.json({ error: "Character not found" }, { status: 404 });
     }
 
-    // Add user message to database
-    await dbService.addMessage(sessionId, "user", message);
+    // Prepare message metadata to include images
+    const messageMetadata =
+      images && images.length > 0
+        ? {
+            images: images.map((img) => ({
+              name: img.name,
+              mimeType: img.mimeType,
+              size: img.size,
+              uploadedAt: img.uploadedAt,
+            })),
+          }
+        : null;
+
+    // Add user message to database with image metadata
+    await dbService.addMessage(
+      sessionId,
+      "user",
+      message,
+      null,
+      messageMetadata
+    );
 
     // Get recent conversation history
     const recentMessages = await dbService.getRecentMessages(sessionId, 10);
+
+    // Add image data to the last user message for AI processing
+    if (images && images.length > 0) {
+      console.log(`🖼️ [Chat API] Received ${images.length} images`);
+      images.forEach((img, index) => {
+        console.log(
+          `📷 [Chat API] Image ${index + 1}: ${img.mimeType}, ${Math.round(
+            img.data.length / 1024
+          )}KB`
+        );
+      });
+
+      const lastUserMessage = recentMessages.find(
+        (msg) => msg.role === "user" && msg.content === message
+      );
+      if (lastUserMessage) {
+        lastUserMessage.images = images;
+        console.log(`✅ [Chat API] Added images to message for AI processing`);
+      } else {
+        console.log(
+          `❌ [Chat API] Could not find last user message to attach images`
+        );
+      }
+    }
 
     // Get session memory/context for long conversations
     const sessionMemory = await dbService.getChatMemory(sessionId);
     const sessionContext = sessionMemory ? sessionMemory.summary : null;
 
-    // Generate character response
+    // Check if this conversation contains images
+    const hasImages = images && images.length > 0;
+    console.log(`🤖 [Chat API] Calling AI with hasImages: ${hasImages}`);
+
+    // Generate character response with image support
     const aiResponse = await aiService.generateCharacterResponse(
       recentMessages,
       character,
-      sessionContext
+      sessionContext,
+      hasImages
     );
 
     // Add character response to database
