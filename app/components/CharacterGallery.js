@@ -3,7 +3,12 @@
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 
-export default function CharacterGallery({ user, onStartChat }) {
+export default function CharacterGallery({
+  user,
+  onStartChat,
+  onViewChatHistory,
+  onLogout,
+}) {
   const [characters, setCharacters] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
@@ -259,6 +264,14 @@ export default function CharacterGallery({ user, onStartChat }) {
                 </p>
               </div>
             </div>
+
+            {/* User Info */}
+            <div className="text-right hidden sm:block">
+              <p className="text-sm font-medium text-gray-700">
+                Welcome, {user?.full_name || user?.username || "User"}
+              </p>
+              <p className="text-xs text-gray-500">{user?.email}</p>
+            </div>
           </div>
         </div>
 
@@ -289,6 +302,27 @@ export default function CharacterGallery({ user, onStartChat }) {
                   className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 bg-gray-50 focus:bg-white text-gray-900 placeholder-gray-500"
                 />
               </div>
+
+              {/* Chat History Button */}
+              <button
+                onClick={() => onViewChatHistory && onViewChatHistory()}
+                className="flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-medium hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transform hover:scale-[1.02] transition-all duration-200 shadow-lg hover:shadow-xl whitespace-nowrap"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <span className="hidden sm:inline">Chat History</span>
+                <span className="sm:hidden">History</span>
+              </button>
+
               {searchTerm && (
                 <span className="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium border border-blue-200">
                   {filteredCharacters.length} results
@@ -370,6 +404,23 @@ export default function CharacterGallery({ user, onStartChat }) {
             ))}
           </div>
         )}
+
+        {/* Logout Button at Bottom */}
+        <div className="mt-12 flex justify-center">
+          <button
+            onClick={() => onLogout && onLogout()}
+            className="flex items-center gap-3 px-6 py-3 bg-white/90 backdrop-blur-sm border border-red-200 text-red-600 rounded-xl font-medium hover:bg-red-50 hover:border-red-300 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transform hover:scale-[1.02] transition-all duration-200 shadow-lg hover:shadow-xl"
+          >
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path
+                fillRule="evenodd"
+                d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z"
+                clipRule="evenodd"
+              />
+            </svg>
+            <span className="font-medium">Logout</span>
+          </button>
+        </div>
       </div>
     </div>
   );

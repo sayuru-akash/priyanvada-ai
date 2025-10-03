@@ -204,8 +204,8 @@ export default function AuthComponent() {
         <div className="bg-white rounded-2xl shadow-xl border border-blue-100 overflow-hidden transform transition-all duration-300 hover:shadow-2xl">
           {/* Header */}
           <div className="text-center py-8 px-6 bg-gradient-to-r from-blue-600 to-indigo-600">
-            <h1 className="text-3xl font-bold text-white mb-2">
-              Welcome to ChatApp
+            <h1 className="text-2xl font-bold text-white mb-2">
+              Welcome to PRIYANVADA AI
             </h1>
             <p className="text-blue-100">
               Sign in to continue your conversation

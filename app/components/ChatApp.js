@@ -149,6 +149,14 @@ export default function ChatApp() {
     setSelectedCharacter(null);
   };
 
+  const handleViewChatHistory = () => {
+    setCurrentView("chat");
+    setCurrentSession(null);
+    setSelectedCharacter(null);
+    // Ensure sidebar is open to show chat history
+    setSidebarOpen(true);
+  };
+
   const deleteSession = async (sessionId) => {
     try {
       const response = await fetch(`/api/sessions/${sessionId}`, {
@@ -205,7 +213,12 @@ export default function ChatApp() {
   return (
     <>
       {currentView === "gallery" ? (
-        <CharacterGallery user={userData} onStartChat={handleStartChat} />
+        <CharacterGallery
+          user={userData}
+          onStartChat={handleStartChat}
+          onViewChatHistory={handleViewChatHistory}
+          onLogout={handleLogout}
+        />
       ) : (
         <div className="flex h-screen w-full overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-100">
           <ChatSidebar

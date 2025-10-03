@@ -555,6 +555,13 @@ export default function ChatInterface({
             </button>
           </div>
         </form>
+
+        {/* Simple disclosure message - Always visible */}
+        <div className="mt-3 max-w-4xl mx-auto text-center">
+          <p className="text-xs text-gray-500">
+            This chatbot may make mistakes. Please verify important information.
+          </p>
+        </div>
       </div>
     </div>
   );
