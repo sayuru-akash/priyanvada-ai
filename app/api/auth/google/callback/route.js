@@ -27,7 +27,7 @@ export async function GET(request) {
       console.error("OAuth error:", error);
       const errorUrl = `${
         process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
-      }?auth=error&message=${encodeURIComponent(error)}`;
+      }/auth?auth=error&message=${encodeURIComponent(error)}`;
       return NextResponse.redirect(errorUrl);
     }
 
@@ -35,7 +35,7 @@ export async function GET(request) {
       console.error("No authorization code received");
       const errorUrl = `${
         process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
-      }?auth=error&message=No authorization code received`;
+      }/auth?auth=error&message=No authorization code received`;
       return NextResponse.redirect(errorUrl);
     }
 
@@ -145,14 +145,14 @@ export async function GET(request) {
     // Redirect to frontend with session token
     const redirectUrl = `${
       process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
-    }?auth=success&token=${sessionToken}`;
+    }/auth?auth=success&token=${sessionToken}`;
 
     return NextResponse.redirect(redirectUrl);
   } catch (error) {
     console.error("Google OAuth callback error:", error);
     const errorUrl = `${
       process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
-    }?auth=error&message=${encodeURIComponent(error.message)}`;
+    }/auth?auth=error&message=${encodeURIComponent(error.message)}`;
     return NextResponse.redirect(errorUrl);
   }
 }

@@ -182,6 +182,8 @@ export default function ChatApp() {
       setSessions([]);
       setCurrentSession(null);
       setCurrentView("gallery");
+      // Redirect to landing page after logout
+      window.location.href = "/";
     } catch (error) {
       console.error("Logout failed:", error);
     }
