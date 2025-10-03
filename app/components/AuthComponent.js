@@ -192,87 +192,136 @@ export default function AuthComponent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-        <div className="text-xl text-blue-600 font-medium">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50 relative overflow-hidden">
+        {/* Animated background elements */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+          <div className="absolute top-20 left-10 w-72 h-72 bg-indigo-300/20 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute top-60 right-20 w-96 h-96 bg-purple-300/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+          <div className="absolute bottom-40 left-1/3 w-80 h-80 bg-pink-300/20 rounded-full blur-3xl animate-pulse delay-2000"></div>
+        </div>
+
+        <div className="relative text-center">
+          <div className="relative mb-8">
+            <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full blur-2xl opacity-30 animate-pulse"></div>
+            <div
+              className="relative w-24 h-24 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-full flex items-center justify-center shadow-2xl mx-auto animate-spin"
+              style={{ animationDuration: "3s" }}
+            >
+              <div className="w-20 h-20 bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50 rounded-full"></div>
+            </div>
+          </div>
+          <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
+            Loading...
+          </h2>
+          <p className="text-gray-600">
+            Please wait while we prepare your experience
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-2xl shadow-xl border border-blue-100 overflow-hidden transform transition-all duration-300 hover:shadow-2xl">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50 p-4 relative overflow-hidden">
+      {/* Animated background elements */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-72 h-72 bg-indigo-300/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute top-60 right-20 w-96 h-96 bg-purple-300/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute bottom-40 left-1/3 w-80 h-80 bg-pink-300/20 rounded-full blur-3xl animate-pulse delay-2000"></div>
+      </div>
+
+      <div className="w-full max-w-md relative z-10">
+        <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/50 overflow-hidden transform transition-all duration-300 hover:shadow-indigo-500/20">
           {/* Header */}
-          <div className="text-center py-8 px-6 bg-gradient-to-r from-blue-600 to-indigo-600">
-            <h1 className="text-2xl font-bold text-white mb-2">
-              Welcome to PRIYANVADA AI
-            </h1>
-            <p className="text-blue-100">
-              Sign in to continue your conversation
-            </p>
+          <div className="relative text-center py-10 px-6 overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent"></div>
+            <div className="relative">
+              <p>Welcome to </p>
+              <h1 className="text-3xl font-extrabold text-white mb-2">
+                PRIYANVADA AI
+              </h1>
+              <p className="text-white/90 text-sm">
+                Sign in to continue your conversations
+              </p>
+            </div>
           </div>
 
           {/* Tab Navigation */}
-          <div className="flex border-b border-gray-200">
+          <div className="flex border-b border-gray-200 bg-gray-50/50">
             <button
-              className={`flex-1 py-4 px-6 text-sm font-medium transition-all duration-200 ${
+              className={`flex-1 py-4 px-6 text-sm font-bold transition-all duration-300 relative ${
                 tab === 0
-                  ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
-                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                  ? "text-indigo-600 bg-white"
+                  : "text-gray-500 hover:text-gray-700 hover:bg-white/50"
               }`}
               onClick={() => handleTabChange(null, 0)}
               {...a11yProps(0)}
             >
+              {tab === 0 && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600"></div>
+              )}
               Sign In
             </button>
             <button
-              className={`flex-1 py-4 px-6 text-sm font-medium transition-all duration-200 ${
+              className={`flex-1 py-4 px-6 text-sm font-bold transition-all duration-300 relative ${
                 tab === 1
-                  ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
-                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                  ? "text-indigo-600 bg-white"
+                  : "text-gray-500 hover:text-gray-700 hover:bg-white/50"
               }`}
               onClick={() => handleTabChange(null, 1)}
               {...a11yProps(1)}
             >
+              {tab === 1 && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600"></div>
+              )}
               Sign Up
             </button>
           </div>
 
           {/* Alerts */}
           {error && (
-            <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="mx-6 mt-6 p-4 bg-red-50 border-2 border-red-200 rounded-2xl shadow-lg">
               <div className="flex items-center">
-                <svg
-                  className="w-5 h-5 text-red-400 mr-2"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                <span className="text-red-700 text-sm">{error}</span>
+                <div className="flex-shrink-0 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center mr-3">
+                  <svg
+                    className="w-5 h-5 text-white"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+                <span className="text-red-700 text-sm font-medium">
+                  {error}
+                </span>
               </div>
             </div>
           )}
 
           {success && (
-            <div className="mx-6 mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div className="mx-6 mt-6 p-4 bg-emerald-50 border-2 border-emerald-200 rounded-2xl shadow-lg">
               <div className="flex items-center">
-                <svg
-                  className="w-5 h-5 text-green-400 mr-2"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                <span className="text-green-700 text-sm">{success}</span>
+                <div className="flex-shrink-0 w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center mr-3">
+                  <svg
+                    className="w-5 h-5 text-white"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+                <span className="text-emerald-700 text-sm font-medium">
+                  {success}
+                </span>
               </div>
             </div>
           )}
@@ -295,7 +344,7 @@ export default function AuthComponent() {
                   required
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 bg-gray-50 focus:bg-white text-gray-900 placeholder-gray-500"
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-200 focus:border-indigo-400 transition-all duration-300 bg-white text-gray-900 placeholder-gray-400 font-medium shadow-sm hover:border-gray-300"
                   placeholder="Enter your email"
                 />
               </div>
@@ -315,7 +364,7 @@ export default function AuthComponent() {
                   required
                   value={formData.password}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 bg-gray-50 focus:bg-white text-gray-900 placeholder-gray-500"
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-200 focus:border-indigo-400 transition-all duration-300 bg-white text-gray-900 placeholder-gray-400 font-medium shadow-sm hover:border-gray-300"
                   placeholder="Enter your password"
                 />
               </div>
@@ -408,7 +457,7 @@ export default function AuthComponent() {
                   required
                   value={formData.username}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 bg-gray-50 focus:bg-white text-gray-900 placeholder-gray-500"
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-200 focus:border-indigo-400 transition-all duration-300 bg-white text-gray-900 placeholder-gray-400 font-medium shadow-sm hover:border-gray-300"
                   placeholder="Choose a username"
                 />
               </div>
@@ -426,7 +475,7 @@ export default function AuthComponent() {
                   type="text"
                   value={formData.fullName}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 bg-gray-50 focus:bg-white text-gray-900 placeholder-gray-500"
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-200 focus:border-indigo-400 transition-all duration-300 bg-white text-gray-900 placeholder-gray-400 font-medium shadow-sm hover:border-gray-300"
                   placeholder="Enter your full name"
                 />
               </div>
@@ -446,7 +495,7 @@ export default function AuthComponent() {
                   required
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 bg-gray-50 focus:bg-white text-gray-900 placeholder-gray-500"
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-200 focus:border-indigo-400 transition-all duration-300 bg-white text-gray-900 placeholder-gray-400 font-medium shadow-sm hover:border-gray-300"
                   placeholder="Enter your email"
                 />
               </div>
@@ -466,7 +515,7 @@ export default function AuthComponent() {
                   required
                   value={formData.password}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 bg-gray-50 focus:bg-white text-gray-900 placeholder-gray-500"
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-200 focus:border-indigo-400 transition-all duration-300 bg-white text-gray-900 placeholder-gray-400 font-medium shadow-sm hover:border-gray-300"
                   placeholder="Create a password"
                 />
                 <p className="mt-2 text-sm text-gray-600">
@@ -477,7 +526,7 @@ export default function AuthComponent() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-4 rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-[1.02]"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 px-4 rounded-xl font-bold shadow-lg hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-blue-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-[1.02]"
               >
                 {isLoading ? (
                   <div className="flex items-center justify-center">
@@ -520,7 +569,7 @@ export default function AuthComponent() {
                 type="button"
                 onClick={handleGoogleSignIn}
                 disabled={googleLoading}
-                className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-[1.02]"
+                className="w-full flex items-center justify-center px-4 py-3.5 border-2 border-gray-200 rounded-xl shadow-lg bg-white text-sm font-bold text-gray-700 hover:bg-gray-50 hover:border-gray-300 focus:outline-none focus:ring-4 focus:ring-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-[1.02]"
               >
                 <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
                   <path
