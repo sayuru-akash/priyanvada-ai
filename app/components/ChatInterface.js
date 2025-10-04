@@ -16,9 +16,12 @@ export default function ChatInterface({
   const [inputMessage, setInputMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [typing, setTyping] = useState(false);
+  const [selectedImages, setSelectedImages] = useState([]);
+  const [uploadingImages, setUploadingImages] = useState(false);
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const inputRef = useRef(null);
+  const fileInputRef = useRef(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   // Adjust UI when virtual keyboard / viewport changes (mobile browsers)
@@ -92,8 +95,74 @@ export default function ChatInterface({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  const handleImageUpload = async (event) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    setUploadingImages(true);
+    const uploadedImages = [];
+
+    try {
+      for (const file of files) {
+        // Validate file type
+        if (!file.type.startsWith("image/")) {
+          alert(`${file.name} is not a valid image file.`);
+          continue;
+        }
+
+        // Validate file size (10MB limit)
+        if (file.size > 10 * 1024 * 1024) {
+          alert(
+            `${file.name} is too large. Please select images smaller than 10MB.`
+          );
+          continue;
+        }
+
+        const formData = new FormData();
+        formData.append("image", file);
+
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          uploadedImages.push({
+            id: Date.now() + Math.random(),
+            name: file.name,
+            url: result.image.url,
+            publicId: result.image.publicId,
+            mimeType: result.image.mimeType,
+            size: result.image.size,
+            data: result.image.data, // Base64 for AI processing
+          });
+        } else {
+          alert(`Failed to upload ${file.name}: ${result.error}`);
+        }
+      }
+
+      setSelectedImages((prev) => [...prev, ...uploadedImages]);
+    } catch (error) {
+      console.error("Error uploading images:", error);
+      alert("Failed to upload images. Please try again.");
+    } finally {
+      setUploadingImages(false);
+      // Clear the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const removeImage = (imageId) => {
+    setSelectedImages((prev) => prev.filter((img) => img.id !== imageId));
+  };
+
   const handleSendMessage = async () => {
-    if (!inputMessage.trim() || loading) return;
+    if ((!inputMessage.trim() && selectedImages.length === 0) || loading)
+      return;
 
     let currentSession = session;
 
@@ -108,10 +177,12 @@ export default function ChatInterface({
       role: "user",
       content: inputMessage.trim(),
       timestamp: new Date().toISOString(),
+      images: selectedImages.length > 0 ? selectedImages : null,
     };
 
     setMessages((prev) => [...prev, userMessage]);
     setInputMessage("");
+    setSelectedImages([]);
     setLoading(true);
     setTyping(true);
 
@@ -125,6 +196,7 @@ export default function ChatInterface({
           sessionId: currentSession.id,
           message: userMessage.content,
           characterId: character?.id || currentSession.character_id,
+          images: selectedImages.length > 0 ? selectedImages : null,
         }),
       });
 
@@ -281,6 +353,26 @@ export default function ChatInterface({
 
             {/* Message content */}
             <div className="mb-2">
+              {/* Display images if present */}
+              {message.images && message.images.length > 0 && (
+                <div className="mb-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {message.images.map((image, index) => (
+                      <div key={index} className="relative">
+                        <Image
+                          src={image.url}
+                          alt={`Image ${index + 1}`}
+                          width={200}
+                          height={200}
+                          className="rounded-lg max-w-full h-auto object-cover shadow-sm border"
+                          style={{ maxHeight: "200px" }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {isUser ? (
                 <div className="text-sm leading-relaxed">{message.content}</div>
               ) : (
@@ -504,6 +596,31 @@ export default function ChatInterface({
           paddingBottom: keyboardHeight ? keyboardHeight + 12 : undefined,
         }}
       >
+        {/* Selected Images Preview */}
+        {selectedImages.length > 0 && (
+          <div className="max-w-4xl mx-auto mb-4">
+            <div className="flex flex-wrap gap-2">
+              {selectedImages.map((image) => (
+                <div key={image.id} className="relative group">
+                  <Image
+                    src={image.url}
+                    alt="Selected image"
+                    width={80}
+                    height={80}
+                    className="w-20 h-20 object-cover rounded-lg border shadow-sm"
+                  />
+                  <button
+                    onClick={() => removeImage(image.id)}
+                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs font-bold hover:bg-red-600 transition-colors"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -528,7 +645,7 @@ export default function ChatInterface({
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyPress={handleKeyPress}
               disabled={loading}
-              className="w-full px-6 py-4 pr-16 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 bg-white shadow-sm resize-none min-h-[56px] max-h-32 overflow-y-auto text-gray-900 placeholder-gray-500"
+              className="w-full px-6 py-4 pr-24 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 bg-white shadow-sm resize-none min-h-[56px] max-h-32 overflow-y-auto text-gray-900 placeholder-gray-500"
               style={{
                 height: "auto",
                 minHeight: "56px",
@@ -539,9 +656,58 @@ export default function ChatInterface({
                   Math.min(e.target.scrollHeight, 128) + "px";
               }}
             />
+
+            {/* Image Upload Button */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={loading || uploadingImages}
+              className="absolute right-16 bottom-3 p-3 text-gray-500 hover:text-blue-600 focus:outline-none focus:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+              title="Upload images"
+            >
+              {uploadingImages ? (
+                <svg
+                  className="w-5 h-5 animate-spin"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+              ) : (
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
+              )}
+            </button>
+
+            {/* Send Button */}
             <button
               type="submit"
-              disabled={!inputMessage.trim() || loading}
+              disabled={
+                (!inputMessage.trim() && selectedImages.length === 0) || loading
+              }
               className="absolute right-3 bottom-3 p-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 transition-all duration-200 shadow-lg"
             >
               {loading ? (
@@ -574,6 +740,16 @@ export default function ChatInterface({
                 </svg>
               )}
             </button>
+
+            {/* Hidden File Input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="hidden"
+            />
           </div>
         </form>
 
