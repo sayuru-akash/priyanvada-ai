@@ -27,26 +27,31 @@ export async function POST(request) {
       return Response.json({ error: "Character not found" }, { status: 404 });
     }
 
-    // Prepare message metadata to include images
-    const messageMetadata =
-      images && images.length > 0
-        ? {
-            images: images.map((img) => ({
-              name: img.name,
-              mimeType: img.mimeType,
-              size: img.size,
-              uploadedAt: img.uploadedAt,
-            })),
-          }
-        : null;
+    // Prepare image data for database storage
+    let imageData = null;
+    if (images && images.length > 0) {
+      imageData = images.map((img) => ({
+        url: img.url, // Cloudinary URL
+        publicId: img.publicId, // Cloudinary public ID
+        mimeType: img.mimeType,
+        size: img.size,
+        name: img.name,
+        uploadedAt: img.uploadedAt,
+        width: img.width || null,
+        height: img.height || null,
+        // Keep base64 data for AI processing (temporary)
+        data: img.data,
+      }));
+    }
 
-    // Add user message to database with image metadata
+    // Add user message to database with complete image data
     await dbService.addMessage(
       sessionId,
       "user",
       message,
       null,
-      messageMetadata
+      null, // metadata
+      imageData // images array
     );
 
     // Get recent conversation history
