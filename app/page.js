@@ -1,5 +1,5 @@
-import ChatApp from "./components/ChatApp";
+import LandingPage from "./components/LandingPage";
 
 export default function Home() {
-  return <ChatApp />;
+  return <LandingPage />;
 }
