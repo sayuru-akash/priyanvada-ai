@@ -1,4 +1,4 @@
-import dbService from "../../../../lib/database";
+import dbService from "../../../../../lib/database.js";
 
 export async function GET(request, { params }) {
   try {
