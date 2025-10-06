@@ -160,9 +160,176 @@ app.get("/api/users", async (req, res) => {
       order = "desc",
       limit = 30,
       page = 1,
+      hasImages = "", // New filter for users with images
     } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
+    // NEW APPROACH: If filtering by images, query PostgreSQL first to get the correct count and pagination
+    if (hasImages === "true") {
+      console.log(
+        "🔍 Image filter active - querying PostgreSQL first for correct pagination"
+      );
+
+      // Get users with images from PostgreSQL with proper pagination
+      const imageUsersQuery = `
+        WITH user_image_stats AS (
+          SELECT 
+            cs.user_id,
+            COUNT(DISTINCT cs.id) as session_count,
+            COUNT(m.id) as message_count,
+            COUNT(CASE WHEN m.images IS NOT NULL AND m.images != 'null' THEN 1 END) as images_message_count,
+            MAX(GREATEST(
+              cs.created_at, 
+              cs.updated_at, 
+              COALESCE(m.timestamp, cs.created_at)
+            )) as last_activity
+          FROM chat_sessions cs
+          LEFT JOIN messages m ON cs.id = m.session_id
+          GROUP BY cs.user_id
+          HAVING COUNT(CASE WHEN m.images IS NOT NULL AND m.images != 'null' THEN 1 END) > 0
+        )
+        SELECT 
+          user_id,
+          session_count,
+          message_count, 
+          images_message_count,
+          last_activity
+        FROM user_image_stats
+        ORDER BY 
+          CASE WHEN $3 = 'last_activity' THEN last_activity END ${
+            order === "desc" ? "DESC" : "ASC"
+          },
+          CASE WHEN $3 = 'message_count' THEN message_count END ${
+            order === "desc" ? "DESC" : "ASC"
+          },
+          CASE WHEN $3 = 'session_count' THEN session_count END ${
+            order === "desc" ? "DESC" : "ASC"
+          },
+          user_id
+        LIMIT $1 OFFSET $2
+      `;
+
+      const countQuery = `
+        SELECT COUNT(*) as total FROM (
+          SELECT cs.user_id
+          FROM chat_sessions cs
+          LEFT JOIN messages m ON cs.id = m.session_id
+          GROUP BY cs.user_id
+          HAVING COUNT(CASE WHEN m.images IS NOT NULL AND m.images != 'null' THEN 1 END) > 0
+        ) filtered_users
+      `;
+
+      const [imageUsersResult, countResult] = await Promise.all([
+        postgres.query(imageUsersQuery, [parseInt(limit), offset, sortBy]),
+        postgres.query(countQuery),
+      ]);
+
+      const totalUsers = parseInt(countResult.rows[0]?.total || 0);
+      const imageUserIds = imageUsersResult.rows.map((row) => row.user_id);
+
+      console.log(
+        `📊 Found ${totalUsers} total users with images, showing ${imageUserIds.length} on page ${page}`
+      );
+
+      if (imageUserIds.length === 0) {
+        return res.json({
+          success: true,
+          users: [],
+          pagination: {
+            page: parseInt(page),
+            limit: parseInt(limit),
+            total: totalUsers,
+            totalPages: Math.ceil(totalUsers / parseInt(limit)),
+            hasNext: false,
+            hasPrev: parseInt(page) > 1,
+          },
+        });
+      }
+
+      // Get Supabase user data for these specific user IDs
+      let supabaseQuery = supabase
+        .from("users")
+        .select(
+          `
+          id,
+          username,
+          email,
+          full_name,
+          avatar_url,
+          last_login,
+          created_at,
+          updated_at
+        `
+        )
+        .in("id", imageUserIds);
+
+      // Apply search filter to Supabase results if provided
+      if (search && search.trim()) {
+        supabaseQuery = supabaseQuery.or(
+          `username.ilike.%${search}%,email.ilike.%${search}%,full_name.ilike.%${search}%`
+        );
+      }
+
+      const { data: supabaseUsers, error } = await supabaseQuery;
+
+      if (error) {
+        throw new Error(`Supabase error: ${error.message}`);
+      }
+
+      // Combine with PostgreSQL metadata in the correct order
+      const metadataMap = new Map();
+      imageUsersResult.rows.forEach((row) => {
+        metadataMap.set(row.user_id, row);
+      });
+
+      const usersWithMetadata = (supabaseUsers || []).map((user) => {
+        const metadata = metadataMap.get(user.id) || {
+          session_count: 0,
+          message_count: 0,
+          images_message_count: 0,
+          last_activity: user.created_at,
+        };
+
+        let lastActivity = user.last_login || user.created_at;
+        if (metadata.last_activity) {
+          try {
+            const activityDate =
+              metadata.last_activity instanceof Date
+                ? metadata.last_activity
+                : new Date(metadata.last_activity);
+            if (!isNaN(activityDate.getTime())) {
+              lastActivity = activityDate.toISOString();
+            }
+          } catch (e) {
+            console.warn("Invalid last_activity date for user", user.id);
+          }
+        }
+
+        return sanitizeForJson({
+          ...user,
+          session_count: parseInt(metadata.session_count || 0),
+          message_count: parseInt(metadata.message_count || 0),
+          images_message_count: parseInt(metadata.images_message_count || 0),
+          has_images: true, // All users in this result have images
+          last_activity: lastActivity,
+        });
+      });
+
+      return res.json({
+        success: true,
+        users: usersWithMetadata,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: totalUsers,
+          totalPages: Math.ceil(totalUsers / parseInt(limit)),
+          hasNext: parseInt(page) * parseInt(limit) < totalUsers,
+          hasPrev: parseInt(page) > 1,
+        },
+      });
+    }
+
+    // ORIGINAL FLOW: No image filter, proceed as before
     let query = supabase.from("users").select(`
         id,
         username,
@@ -353,6 +520,7 @@ app.get("/api/users", async (req, res) => {
             cs.user_id,
             COUNT(DISTINCT cs.id) as session_count,
             COUNT(m.id) as message_count,
+            COUNT(CASE WHEN m.images IS NOT NULL AND m.images != 'null' THEN 1 END) as images_message_count,
             MAX(GREATEST(
               cs.created_at, 
               cs.updated_at, 
@@ -367,8 +535,10 @@ app.get("/api/users", async (req, res) => {
           user_id,
           COALESCE(session_count, 0) as session_count,
           COALESCE(message_count, 0) as message_count,
+          COALESCE(images_message_count, 0) as images_message_count,
           last_activity
         FROM user_stats
+        ${hasImages === "true" ? "WHERE images_message_count > 0" : ""}
       `;
 
       try {
@@ -378,11 +548,23 @@ app.get("/api/users", async (req, res) => {
           metadataMap.set(row.user_id, row);
         });
 
+        // If filtering by images, only include users that actually have images
+        let filteredUsers = users;
+        if (hasImages === "true") {
+          const usersWithImages = new Set(
+            metadataResult.rows
+              .filter((row) => row.images_message_count > 0)
+              .map((row) => row.user_id)
+          );
+          filteredUsers = users.filter((user) => usersWithImages.has(user.id));
+        }
+
         // Combine Supabase user data with PostgreSQL metadata
-        usersWithMetadata = users.map((user) => {
+        usersWithMetadata = filteredUsers.map((user) => {
           const metadata = metadataMap.get(user.id) || {
             session_count: 0,
             message_count: 0,
+            images_message_count: 0,
             last_activity: user.created_at,
           };
 
@@ -414,6 +596,8 @@ app.get("/api/users", async (req, res) => {
             ...user,
             session_count: parseInt(metadata.session_count || 0),
             message_count: parseInt(metadata.message_count || 0),
+            images_message_count: parseInt(metadata.images_message_count || 0),
+            has_images: parseInt(metadata.images_message_count || 0) > 0,
             last_activity: lastActivity,
           });
         });
@@ -428,9 +612,15 @@ app.get("/api/users", async (req, res) => {
             ...user,
             session_count: 0,
             message_count: 0,
+            images_message_count: 0,
+            has_images: false,
             last_activity: user.last_login || user.created_at,
           })
         );
+        // If filtering by images and fallback, return empty since we can't determine
+        if (hasImages === "true") {
+          usersWithMetadata = [];
+        }
       }
     } else {
       usersWithMetadata = [];
@@ -496,6 +686,8 @@ app.get("/api/users/:userId/sessions", async (req, res) => {
         c.avatar_url as character_avatar,
         c.title as character_title,
         COALESCE(msg_stats.message_count, 0) as message_count,
+        COALESCE(msg_stats.has_images, false) as has_images,
+        COALESCE(msg_stats.images_count, 0) as images_count,
         last_msg.role as last_message_role,
         last_msg.content as last_message_content,
         last_msg.timestamp as last_message_timestamp
@@ -504,7 +696,9 @@ app.get("/api/users/:userId/sessions", async (req, res) => {
       LEFT JOIN (
         SELECT 
           session_id,
-          COUNT(*) as message_count
+          COUNT(*) as message_count,
+          COUNT(CASE WHEN images IS NOT NULL AND images != 'null' THEN 1 END) > 0 as has_images,
+          COUNT(CASE WHEN images IS NOT NULL AND images != 'null' THEN 1 END) as images_count
         FROM messages
         GROUP BY session_id
       ) msg_stats ON cs.id = msg_stats.session_id
@@ -642,6 +836,8 @@ app.get("/api/sessions/:sessionId/messages", async (req, res) => {
         content,
         token_count,
         metadata,
+        images,
+        has_images,
         timestamp
       FROM messages 
       WHERE session_id = $1 
@@ -1045,6 +1241,55 @@ app.get("/", (req, res) => {
             letter-spacing: 0.5px;
         }
         
+        .image-badge {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+        
+        .image-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #10b981;
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            font-size: 0.7rem;
+            margin-left: 0.25rem;
+        }
+        
+        .filter-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem;
+        }
+        
+        .filter-checkbox input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .filter-checkbox label {
+            cursor: pointer;
+            font-size: 0.875rem;
+            color: #374151;
+            font-weight: 500;
+        }
+        
         .sessions-list {
             background: white;
             border-radius: 12px;
@@ -1253,6 +1498,116 @@ app.get("/", (req, res) => {
             text-align: left;
         }
         
+        .message-images {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+        
+        .message-image-wrapper {
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .message-image-wrapper:hover {
+            transform: scale(1.02);
+        }
+        
+        .message-image {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-radius: 8px;
+            border: 2px solid #e5e7eb;
+        }
+        
+        .message.user .message-image {
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        
+        .image-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.6), transparent);
+            color: white;
+            padding: 0.5rem;
+            font-size: 0.75rem;
+        }
+        
+        /* Lightbox styles */
+        .lightbox {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .lightbox.active {
+            display: flex;
+        }
+        
+        .lightbox-content {
+            position: relative;
+            max-width: 90%;
+            max-height: 90%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .lightbox-image {
+            max-width: 100%;
+            max-height: 80vh;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+        
+        .lightbox-info {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+            text-align: center;
+        }
+        
+        .lightbox-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            color: white;
+            border: none;
+            font-size: 2rem;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        
+        .lightbox-close:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+        
         .pagination {
             display: flex;
             justify-content: space-between;
@@ -1381,6 +1736,10 @@ app.get("/", (req, res) => {
                         <option value="desc">Newest First</option>
                         <option value="asc">Oldest First</option>
                     </select>
+                    <div class="filter-checkbox">
+                        <input type="checkbox" id="filter-has-images" />
+                        <label for="filter-has-images">🖼️ Only users with images</label>
+                    </div>
                     <button id="search-users-btn" class="btn btn-primary">🔍 Search</button>
                 </div>
             </div>
@@ -1459,6 +1818,15 @@ app.get("/", (req, res) => {
         </div>
     </div>
 
+    <!-- Lightbox for image viewing -->
+    <div id="lightbox" class="lightbox" onclick="closeLightbox(event)">
+        <div class="lightbox-content" onclick="event.stopPropagation()">
+            <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
+            <img id="lightbox-image" class="lightbox-image" src="" alt="Full size image">
+            <div id="lightbox-info" class="lightbox-info"></div>
+        </div>
+    </div>
+
     <script>
         // Global state
         let currentUser = null;
@@ -1483,7 +1851,8 @@ app.get("/", (req, res) => {
                 page: parseInt(params.get('page')) || 1,
                 search: params.get('search') || '',
                 sortBy: params.get('sortBy') || 'last_activity',
-                order: params.get('order') || 'desc'
+                order: params.get('order') || 'desc',
+                hasImages: params.get('hasImages') || ''
             };
         }
         
@@ -1537,6 +1906,8 @@ app.get("/", (req, res) => {
             document.getElementById('user-search').value = params.search;
             document.getElementById('user-sort').value = params.sortBy;
             document.getElementById('user-order').value = params.order;
+            document.getElementById('filter-has-images').checked = params.hasImages === 'true';
+            document.getElementById('filter-has-images').checked = params.hasImages === 'true';
             
             // Update order dropdown labels based on initial sort
             updateOrderDropdownLabels(params.sortBy);
@@ -1551,6 +1922,7 @@ app.get("/", (req, res) => {
                 const params = getQueryParams();
                 params.page = 1;
                 params.search = document.getElementById('user-search').value;
+                params.hasImages = document.getElementById('filter-has-images').checked ? 'true' : '';
                 updateURL(params);
                 window.location.reload();
             });
@@ -1559,9 +1931,18 @@ app.get("/", (req, res) => {
                     const params = getQueryParams();
                     params.page = 1;
                     params.search = document.getElementById('user-search').value;
+                    params.hasImages = document.getElementById('filter-has-images').checked ? 'true' : '';
                     updateURL(params);
                     window.location.reload();
                 }
+            });
+            
+            document.getElementById('filter-has-images').addEventListener('change', () => {
+                const params = getQueryParams();
+                params.page = 1;
+                params.hasImages = document.getElementById('filter-has-images').checked ? 'true' : '';
+                updateURL(params);
+                window.location.reload();
             });
             
             // Pagination event listeners
@@ -1700,13 +2081,15 @@ app.get("/", (req, res) => {
                 const search = document.getElementById('user-search').value;
                 const sortBy = document.getElementById('user-sort').value;
                 const order = document.getElementById('user-order').value;
+                const hasImages = document.getElementById('filter-has-images').checked;
                 
                 const params = new URLSearchParams({
                     search,
                     sortBy,
                     order,
                     limit: 30,
-                    page: currentUserPage
+                    page: currentUserPage,
+                    hasImages: hasImages ? 'true' : ''
                 });
                 
                 const response = await fetch(\`/api/users?\${params}\`);
@@ -1740,6 +2123,7 @@ app.get("/", (req, res) => {
                 <div class="users-grid">
                     \${users.map(user => \`
                         <div class="user-card" onclick="showUserSessions('\${user.id}', '\${user.username || 'Unknown'}')">
+                            \${user.has_images ? \`<div class="image-badge">🖼️ \${user.images_message_count} image\${user.images_message_count !== 1 ? 's' : ''}</div>\` : ''}
                             <div class="user-header">
                                 <div class="user-avatar">
                                     \${user.avatar_url && typeof user.avatar_url === 'string' && user.avatar_url.trim() ? 
@@ -1914,7 +2298,7 @@ app.get("/", (req, res) => {
                                     }
                                 </div>
                                 <div class="session-info">
-                                    <h4>\${session.title}</h4>
+                                    <h4>\${session.title} \${session.has_images ? '<span class="image-icon" title="Contains images" style="background: #10b981; color: white; padding: 0.2rem 0.5rem; border-radius: 10px; font-size: 0.7rem; margin-left: 0.5rem;">🖼️ \${session.images_count}</span>' : ''}</h4>
                                     <div class="session-meta">
                                         <strong>\${session.character_name}</strong> • 
                                         Created \${formatRelativeTime(session.created_at)}
@@ -2037,9 +2421,15 @@ app.get("/", (req, res) => {
                                     <div class="message-bubble">
                                         \${formatMessageContent(message.content)}
                                     </div>
+                                    \${message.has_images && message.images ? \`
+                                        <div class="message-images">
+                                            \${renderMessageImages(message.images)}
+                                        </div>
+                                    \` : ''}
                                     <div class="message-timestamp">
                                         \${formatDateTime(message.timestamp)}
                                         \${message.token_count ? \` • \${message.token_count} tokens\` : ''}
+                                        \${message.has_images ? ' • 🖼️ Contains images' : ''}
                                     </div>
                                 </div>
                             </div>
@@ -2156,6 +2546,63 @@ app.get("/", (req, res) => {
             if (!text || text.length <= maxLength) return text || '';
             return text.substring(0, maxLength) + '...';
         }
+        
+        // Image rendering helper
+        function renderMessageImages(images) {
+            if (!images || !Array.isArray(images) || images.length === 0) return '';
+            
+            return images.map((img, index) => {
+                const imageUrl = img.url || '';
+                const imageName = img.name || \`Image \${index + 1}\`;
+                const imageSize = img.size ? \`\${(img.size / 1024).toFixed(1)} KB\` : '';
+                const imageDimensions = img.width && img.height ? \`\${img.width}x\${img.height}\` : '';
+                
+                return \`
+                    <div class="message-image-wrapper" onclick="openLightbox('\${sanitizeUrl(imageUrl)}', '\${imageName}', '\${imageSize}', '\${imageDimensions}')">
+                        <img src="\${sanitizeUrl(imageUrl)}" alt="\${imageName}" class="message-image" loading="lazy">
+                        <div class="image-overlay">
+                            \${imageName}\${imageSize ? \` • \${imageSize}\` : ''}
+                        </div>
+                    </div>
+                \`;
+            }).join('');
+        }
+        
+        // Lightbox functions
+        function openLightbox(imageUrl, imageName, imageSize, imageDimensions) {
+            const lightbox = document.getElementById('lightbox');
+            const lightboxImage = document.getElementById('lightbox-image');
+            const lightboxInfo = document.getElementById('lightbox-info');
+            
+            lightboxImage.src = imageUrl;
+            lightboxImage.alt = imageName;
+            
+            let infoHtml = \`<strong>\${imageName}</strong>\`;
+            if (imageSize) infoHtml += \` • \${imageSize}\`;
+            if (imageDimensions) infoHtml += \` • \${imageDimensions}\`;
+            
+            lightboxInfo.innerHTML = infoHtml;
+            lightbox.classList.add('active');
+            
+            // Prevent body scrolling when lightbox is open
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeLightbox(event) {
+            // Only close if clicking on the backdrop or close button
+            if (!event || event.target.id === 'lightbox' || event.target.classList.contains('lightbox-close')) {
+                const lightbox = document.getElementById('lightbox');
+                lightbox.classList.remove('active');
+                document.body.style.overflow = 'auto';
+            }
+        }
+        
+        // Close lightbox with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeLightbox();
+            }
+        });
     </script>
 </body>
 </html>`);
