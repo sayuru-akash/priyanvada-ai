@@ -768,6 +768,8 @@ app.get("/api/users/:userId/sessions", async (req, res) => {
         character_avatar: session.character_avatar,
         character_title: session.character_title,
         message_count: parseInt(session.message_count || 0),
+        has_images: session.has_images || false,
+        images_count: parseInt(session.images_count || 0),
         last_message: lastMessage,
       });
     });
@@ -1261,13 +1263,20 @@ app.get("/", (req, res) => {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            background: #10b981;
+            background: linear-gradient(135deg, #10b981, #059669);
             color: white;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
+            padding: 0.2rem 0.6rem;
+            border-radius: 12px;
             font-size: 0.7rem;
-            margin-left: 0.25rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+            box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .image-icon:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
         }
         
         .filter-checkbox {
@@ -2298,7 +2307,7 @@ app.get("/", (req, res) => {
                                     }
                                 </div>
                                 <div class="session-info">
-                                    <h4>\${session.title} \${session.has_images ? '<span class="image-icon" title="Contains images" style="background: #10b981; color: white; padding: 0.2rem 0.5rem; border-radius: 10px; font-size: 0.7rem; margin-left: 0.5rem;">🖼️ \${session.images_count}</span>' : ''}</h4>
+                                    <h4>\${session.title} \${session.has_images ? \`<span class="image-icon" title="\${session.images_count} image(s) in this conversation">🖼️ \${session.images_count} image\${session.images_count > 1 ? 's' : ''}</span>\` : ''}</h4>
                                     <div class="session-meta">
                                         <strong>\${session.character_name}</strong> • 
                                         Created \${formatRelativeTime(session.created_at)}
