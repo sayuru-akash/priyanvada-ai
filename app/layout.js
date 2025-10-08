@@ -15,7 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "PRIYANVADA AI - Bringing Your Favorite Characters to Life",
+  title:
+    "PRIYANVADA AI - Mohan Raj Madawala - Bringing Favorite Characters to Life",
   description: "මොහාන් රාජ් මඩවලගේ ලෝකයට පිවිසෙමු..",
   icons: {
     icon: "/images/logo.ico",
@@ -23,7 +24,8 @@ export const metadata = {
     apple: "/images/logo.png",
   },
   openGraph: {
-    title: "PRIYANVADA AI - Bringing Your Favorite Characters to Life",
+    title:
+      "PRIYANVADA AI - Mohan Raj Madawala - Bringing Your Favorite Characters to Life",
     description: "මොහාන් රාජ් මඩවලගේ ලෝකයට පිවිසෙමු..",
     url: "https://www.priyanvadaai.com",
     siteName: "PRIYANVADA AI",
@@ -40,7 +42,8 @@ export const metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "PRIYANVADA AI - Bringing Your Favorite Characters to Life",
+    title:
+      "PRIYANVADA AI - Mohan Raj Madawala - Bringing Favorite Characters to Life",
     description: "මොහාන් රාජ් මඩවලගේ ලෝකයට පිවිසෙමු..",
     images: ["/images/cover-img.png"],
     creator: "@priyanvada_ai",
