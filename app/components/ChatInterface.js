@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef, useCallback, memo, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import Image from "next/image";
+import { useCredit } from "../contexts/CreditContext";
 
 export default function ChatInterface({
   session,
@@ -26,6 +27,8 @@ export default function ChatInterface({
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  const { hasCredits, showCreditExhaustionModal } = useCredit();
 
   // Adjust UI when virtual keyboard / viewport changes (mobile browsers)
   useEffect(() => {
@@ -98,7 +101,13 @@ export default function ChatInterface({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const handleImageUpload = async (event) => {
+  const handleImageUpload = useCallback(async (event) => {
+    // Check credits before allowing image upload
+    if (!hasCredits) {
+      showCreditExhaustionModal();
+      return;
+    }
+
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
 
@@ -196,7 +205,7 @@ export default function ChatInterface({
         fileInputRef.current.value = "";
       }
     }
-  };
+  }, [hasCredits, showCreditExhaustionModal]);
 
   const removeImage = (imageId) => {
     setSelectedImages((prev) => prev.filter((img) => img.id !== imageId));
@@ -303,9 +312,15 @@ export default function ChatInterface({
       window.removeEventListener("dragend", handleWindowDragEnd);
       window.removeEventListener("mouseup", handleWindowDragEnd);
     };
-  }, []);
+  }, [handleImageUpload]);
 
   const handleSendMessage = async () => {
+    // Check credits before allowing message send
+    if (!hasCredits) {
+      showCreditExhaustionModal();
+      return;
+    }
+
     if ((!inputMessage.trim() && selectedImages.length === 0) || loading)
       return;
 
@@ -1035,11 +1050,15 @@ export default function ChatInterface({
                   }, 50);
                 }}
                 rows={1}
-                placeholder="Type your message here... You can also paste or drag & drop images!"
+                placeholder={
+                  !hasCredits
+                    ? "Chat credits exhausted - upgrade to continue chatting!"
+                    : "Type your message here... You can also paste or drag & drop images!"
+                }
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
-                disabled={loading}
+                disabled={loading || !hasCredits}
                 className="w-full px-6 py-4 pr-32 bg-transparent rounded-3xl resize-none min-h-[56px] max-h-32 overflow-y-auto text-gray-900 placeholder-gray-500 focus:outline-none"
                 style={{
                   height: "auto",
@@ -1057,9 +1076,17 @@ export default function ChatInterface({
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={loading || uploadingImages}
-                  className="p-3 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 focus:outline-none focus:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 rounded-xl transform hover:scale-105"
-                  title="Upload images (or drag & drop / paste)"
+                  disabled={loading || uploadingImages || !hasCredits}
+                  className={`p-3 transition-all duration-200 rounded-xl transform hover:scale-105 ${
+                    !hasCredits
+                      ? "text-gray-300 cursor-not-allowed opacity-50"
+                      : "text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 focus:outline-none focus:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  }`}
+                  title={
+                    !hasCredits
+                      ? "Chat credits exhausted - upgrade to upload images"
+                      : "Upload images (or drag & drop / paste)"
+                  }
                 >
                   {uploadingImages ? (
                     <svg
@@ -1103,7 +1130,8 @@ export default function ChatInterface({
                   type="submit"
                   disabled={
                     (!inputMessage.trim() && selectedImages.length === 0) ||
-                    loading
+                    loading ||
+                    !hasCredits
                   }
                   className="p-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 transition-all duration-200 shadow-lg disabled:hover:scale-100"
                 >
