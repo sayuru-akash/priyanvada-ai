@@ -101,111 +101,114 @@ export default function ChatInterface({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const handleImageUpload = useCallback(async (event) => {
-    // Check credits before allowing image upload
-    if (!hasCredits) {
-      showCreditExhaustionModal();
-      return;
-    }
+  const handleImageUpload = useCallback(
+    async (event) => {
+      // Check credits before allowing image upload
+      if (!hasCredits) {
+        showCreditExhaustionModal();
+        return;
+      }
 
-    const files = Array.from(event.target.files || []);
-    if (files.length === 0) return;
+      const files = Array.from(event.target.files || []);
+      if (files.length === 0) return;
 
-    setUploadingImages(true);
-    const uploadedImages = [];
+      setUploadingImages(true);
+      const uploadedImages = [];
 
-    try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+      try {
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
 
-        // Validate file type
-        if (!file.type.startsWith("image/")) {
-          alert(`${file.name} is not a valid image file.`);
-          continue;
-        }
+          // Validate file type
+          if (!file.type.startsWith("image/")) {
+            alert(`${file.name} is not a valid image file.`);
+            continue;
+          }
 
-        // Validate file size (10MB limit)
-        if (file.size > 10 * 1024 * 1024) {
-          alert(
-            `${file.name} is too large. Please select images smaller than 10MB.`
-          );
-          continue;
-        }
+          // Validate file size (10MB limit)
+          if (file.size > 10 * 1024 * 1024) {
+            alert(
+              `${file.name} is too large. Please select images smaller than 10MB.`
+            );
+            continue;
+          }
 
-        // Set initial progress
-        const progressId = `${file.name}-${Date.now()}`;
-        setUploadProgress((prev) => ({
-          ...prev,
-          [progressId]: 0,
-        }));
-
-        const formData = new FormData();
-        formData.append("image", file);
-
-        // Simulate progress (since we can't track real upload progress easily)
-        const progressInterval = setInterval(() => {
+          // Set initial progress
+          const progressId = `${file.name}-${Date.now()}`;
           setUploadProgress((prev) => ({
             ...prev,
-            [progressId]: Math.min((prev[progressId] || 0) + 10, 90),
-          }));
-        }, 100);
-
-        const response = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        });
-
-        clearInterval(progressInterval);
-
-        const result = await response.json();
-
-        if (result.success) {
-          setUploadProgress((prev) => ({
-            ...prev,
-            [progressId]: 100,
+            [progressId]: 0,
           }));
 
-          uploadedImages.push({
-            id: Date.now() + Math.random(),
-            name: file.name,
-            url: result.image.url,
-            publicId: result.image.publicId,
-            mimeType: result.image.mimeType,
-            size: result.image.size,
-            data: result.image.data, // Base64 for AI processing
+          const formData = new FormData();
+          formData.append("image", file);
+
+          // Simulate progress (since we can't track real upload progress easily)
+          const progressInterval = setInterval(() => {
+            setUploadProgress((prev) => ({
+              ...prev,
+              [progressId]: Math.min((prev[progressId] || 0) + 10, 90),
+            }));
+          }, 100);
+
+          const response = await fetch("/api/upload", {
+            method: "POST",
+            body: formData,
           });
 
-          // Remove progress after a delay
-          setTimeout(() => {
+          clearInterval(progressInterval);
+
+          const result = await response.json();
+
+          if (result.success) {
+            setUploadProgress((prev) => ({
+              ...prev,
+              [progressId]: 100,
+            }));
+
+            uploadedImages.push({
+              id: Date.now() + Math.random(),
+              name: file.name,
+              url: result.image.url,
+              publicId: result.image.publicId,
+              mimeType: result.image.mimeType,
+              size: result.image.size,
+              data: result.image.data, // Base64 for AI processing
+            });
+
+            // Remove progress after a delay
+            setTimeout(() => {
+              setUploadProgress((prev) => {
+                const newProgress = { ...prev };
+                delete newProgress[progressId];
+                return newProgress;
+              });
+            }, 1000);
+          } else {
             setUploadProgress((prev) => {
               const newProgress = { ...prev };
               delete newProgress[progressId];
               return newProgress;
             });
-          }, 1000);
-        } else {
-          setUploadProgress((prev) => {
-            const newProgress = { ...prev };
-            delete newProgress[progressId];
-            return newProgress;
-          });
-          alert(`Failed to upload ${file.name}: ${result.error}`);
+            alert(`Failed to upload ${file.name}: ${result.error}`);
+          }
+        }
+
+        setSelectedImages((prev) => [...prev, ...uploadedImages]);
+      } catch (error) {
+        console.error("Error uploading images:", error);
+        alert("Failed to upload images. Please try again.");
+        setUploadProgress({});
+      } finally {
+        setUploadingImages(false);
+        // Clear the file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
         }
       }
-
-      setSelectedImages((prev) => [...prev, ...uploadedImages]);
-    } catch (error) {
-      console.error("Error uploading images:", error);
-      alert("Failed to upload images. Please try again.");
-      setUploadProgress({});
-    } finally {
-      setUploadingImages(false);
-      // Clear the file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-    }
-  }, [hasCredits, showCreditExhaustionModal]);
+    },
+    [hasCredits, showCreditExhaustionModal]
+  );
 
   const removeImage = (imageId) => {
     setSelectedImages((prev) => prev.filter((img) => img.id !== imageId));
