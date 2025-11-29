@@ -80,10 +80,16 @@ async function fetchAllUserImages() {
 
     for (const user of allUsers) {
       if (processedUsers % 100 === 0) {
-        console.log(`   Processing users ${processedUsers + 1}-${Math.min(processedUsers + 100, allUsers.length)}...`);
+        console.log(
+          `   Processing users ${processedUsers + 1}-${Math.min(
+            processedUsers + 100,
+            allUsers.length
+          )}...`
+        );
       }
 
-      const userMessagesResult = await postgres.query(`
+      const userMessagesResult = await postgres.query(
+        `
         SELECT 
           m.id,
           m.session_id,
@@ -100,7 +106,9 @@ async function fetchAllUserImages() {
         WHERE cs.user_id = $1
           AND m.has_images = true
           AND m.role = 'user'
-      `, [user.id]);
+      `,
+        [user.id]
+      );
 
       allMessages = allMessages.concat(userMessagesResult.rows);
       processedUsers++;
@@ -152,7 +160,9 @@ async function fetchAllUserImages() {
 
     // Sort messages by timestamp descending for each user
     userImagesMap.forEach((userData) => {
-      userData.messages.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      userData.messages.sort(
+        (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
+      );
     });
 
     // Step 5: Display results
