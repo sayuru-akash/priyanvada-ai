@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef, useCallback, memo, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import Image from "next/image";
+import { useCredit } from "../contexts/CreditContext";
 
 export default function ChatInterface({
   session,
@@ -26,6 +27,8 @@ export default function ChatInterface({
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  const { hasCredits, showCreditExhaustionModal } = useCredit();
 
   // Adjust UI when virtual keyboard / viewport changes (mobile browsers)
   useEffect(() => {
@@ -98,105 +101,114 @@ export default function ChatInterface({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const handleImageUpload = async (event) => {
-    const files = Array.from(event.target.files || []);
-    if (files.length === 0) return;
+  const handleImageUpload = useCallback(
+    async (event) => {
+      // Check credits before allowing image upload
+      if (!hasCredits) {
+        showCreditExhaustionModal();
+        return;
+      }
 
-    setUploadingImages(true);
-    const uploadedImages = [];
+      const files = Array.from(event.target.files || []);
+      if (files.length === 0) return;
 
-    try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+      setUploadingImages(true);
+      const uploadedImages = [];
 
-        // Validate file type
-        if (!file.type.startsWith("image/")) {
-          alert(`${file.name} is not a valid image file.`);
-          continue;
-        }
+      try {
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
 
-        // Validate file size (10MB limit)
-        if (file.size > 10 * 1024 * 1024) {
-          alert(
-            `${file.name} is too large. Please select images smaller than 10MB.`
-          );
-          continue;
-        }
+          // Validate file type
+          if (!file.type.startsWith("image/")) {
+            alert(`${file.name} is not a valid image file.`);
+            continue;
+          }
 
-        // Set initial progress
-        const progressId = `${file.name}-${Date.now()}`;
-        setUploadProgress((prev) => ({
-          ...prev,
-          [progressId]: 0,
-        }));
+          // Validate file size (10MB limit)
+          if (file.size > 10 * 1024 * 1024) {
+            alert(
+              `${file.name} is too large. Please select images smaller than 10MB.`
+            );
+            continue;
+          }
 
-        const formData = new FormData();
-        formData.append("image", file);
-
-        // Simulate progress (since we can't track real upload progress easily)
-        const progressInterval = setInterval(() => {
+          // Set initial progress
+          const progressId = `${file.name}-${Date.now()}`;
           setUploadProgress((prev) => ({
             ...prev,
-            [progressId]: Math.min((prev[progressId] || 0) + 10, 90),
-          }));
-        }, 100);
-
-        const response = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        });
-
-        clearInterval(progressInterval);
-
-        const result = await response.json();
-
-        if (result.success) {
-          setUploadProgress((prev) => ({
-            ...prev,
-            [progressId]: 100,
+            [progressId]: 0,
           }));
 
-          uploadedImages.push({
-            id: Date.now() + Math.random(),
-            name: file.name,
-            url: result.image.url,
-            publicId: result.image.publicId,
-            mimeType: result.image.mimeType,
-            size: result.image.size,
-            data: result.image.data, // Base64 for AI processing
+          const formData = new FormData();
+          formData.append("image", file);
+
+          // Simulate progress (since we can't track real upload progress easily)
+          const progressInterval = setInterval(() => {
+            setUploadProgress((prev) => ({
+              ...prev,
+              [progressId]: Math.min((prev[progressId] || 0) + 10, 90),
+            }));
+          }, 100);
+
+          const response = await fetch("/api/upload", {
+            method: "POST",
+            body: formData,
           });
 
-          // Remove progress after a delay
-          setTimeout(() => {
+          clearInterval(progressInterval);
+
+          const result = await response.json();
+
+          if (result.success) {
+            setUploadProgress((prev) => ({
+              ...prev,
+              [progressId]: 100,
+            }));
+
+            uploadedImages.push({
+              id: Date.now() + Math.random(),
+              name: file.name,
+              url: result.image.url,
+              publicId: result.image.publicId,
+              mimeType: result.image.mimeType,
+              size: result.image.size,
+              data: result.image.data, // Base64 for AI processing
+            });
+
+            // Remove progress after a delay
+            setTimeout(() => {
+              setUploadProgress((prev) => {
+                const newProgress = { ...prev };
+                delete newProgress[progressId];
+                return newProgress;
+              });
+            }, 1000);
+          } else {
             setUploadProgress((prev) => {
               const newProgress = { ...prev };
               delete newProgress[progressId];
               return newProgress;
             });
-          }, 1000);
-        } else {
-          setUploadProgress((prev) => {
-            const newProgress = { ...prev };
-            delete newProgress[progressId];
-            return newProgress;
-          });
-          alert(`Failed to upload ${file.name}: ${result.error}`);
+            alert(`Failed to upload ${file.name}: ${result.error}`);
+          }
+        }
+
+        setSelectedImages((prev) => [...prev, ...uploadedImages]);
+      } catch (error) {
+        console.error("Error uploading images:", error);
+        alert("Failed to upload images. Please try again.");
+        setUploadProgress({});
+      } finally {
+        setUploadingImages(false);
+        // Clear the file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
         }
       }
-
-      setSelectedImages((prev) => [...prev, ...uploadedImages]);
-    } catch (error) {
-      console.error("Error uploading images:", error);
-      alert("Failed to upload images. Please try again.");
-      setUploadProgress({});
-    } finally {
-      setUploadingImages(false);
-      // Clear the file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-    }
-  };
+    },
+    [hasCredits, showCreditExhaustionModal]
+  );
 
   const removeImage = (imageId) => {
     setSelectedImages((prev) => prev.filter((img) => img.id !== imageId));
@@ -303,18 +315,12 @@ export default function ChatInterface({
       window.removeEventListener("dragend", handleWindowDragEnd);
       window.removeEventListener("mouseup", handleWindowDragEnd);
     };
-  }, []);
+  }, [handleImageUpload]);
 
   const handleSendMessage = async () => {
     // Check credits before allowing message send
-    const credits = process.env.NEXT_PUBLIC_REMAINING_CREDITS;
-    const hasCredits = credits ? parseInt(credits, 10) > 0 : true; // Default to true if not set
-
     if (!hasCredits) {
-      // Show credit exhaustion modal instead of sending message
-      if (window.showCreditExhaustionModal) {
-        window.showCreditExhaustionModal();
-      }
+      showCreditExhaustionModal();
       return;
     }
 
@@ -1047,11 +1053,15 @@ export default function ChatInterface({
                   }, 50);
                 }}
                 rows={1}
-                placeholder="Type your message here... You can also paste or drag & drop images!"
+                placeholder={
+                  !hasCredits
+                    ? "Chat credits exhausted - upgrade to continue chatting!"
+                    : "Type your message here... You can also paste or drag & drop images!"
+                }
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
-                disabled={loading}
+                disabled={loading || !hasCredits}
                 className="w-full px-6 py-4 pr-32 bg-transparent rounded-3xl resize-none min-h-[56px] max-h-32 overflow-y-auto text-gray-900 placeholder-gray-500 focus:outline-none"
                 style={{
                   height: "auto",
@@ -1069,9 +1079,17 @@ export default function ChatInterface({
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={loading || uploadingImages}
-                  className="p-3 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 focus:outline-none focus:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 rounded-xl transform hover:scale-105"
-                  title="Upload images (or drag & drop / paste)"
+                  disabled={loading || uploadingImages || !hasCredits}
+                  className={`p-3 transition-all duration-200 rounded-xl transform hover:scale-105 ${
+                    !hasCredits
+                      ? "text-gray-300 cursor-not-allowed opacity-50"
+                      : "text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 focus:outline-none focus:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  }`}
+                  title={
+                    !hasCredits
+                      ? "Chat credits exhausted - upgrade to upload images"
+                      : "Upload images (or drag & drop / paste)"
+                  }
                 >
                   {uploadingImages ? (
                     <svg
@@ -1115,7 +1133,8 @@ export default function ChatInterface({
                   type="submit"
                   disabled={
                     (!inputMessage.trim() && selectedImages.length === 0) ||
-                    loading
+                    loading ||
+                    !hasCredits
                   }
                   className="p-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 transition-all duration-200 shadow-lg disabled:hover:scale-100"
                 >

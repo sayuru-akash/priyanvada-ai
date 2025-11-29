@@ -235,7 +235,7 @@ Priyanvada AI operates on a credit-based system to ensure sustainable operations
 
 ```env
 # Set to 0 to disable chat functionality and show upgrade prompts
-REMAINING_CREDITS=10
+NEXT_PUBLIC_REMAINING_CREDITS=10
 ```
 
 ### Database Setup
@@ -431,7 +431,7 @@ For support and questions:
 ---
 
 <div align="center">
-  <strong>Built with ❤️ by the Priyanvada AI Team 2025 with</strong>
+  <strong>Built with ❤️ by the Priyanvada AI Team 2025</strong>
   <br><br>
   <img src="https://img.shields.io/badge/Made%20with-Next.js-black?style=for-the-badge&logo=next.js" />
   <img src="https://img.shields.io/badge/Powered%20by-Google%20Gemini-orange?style=for-the-badge&logo=google" />
