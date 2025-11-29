@@ -70,33 +70,48 @@ async function fetchAllUserImages() {
       `✅ Found ${allUsers.length} total users across ${pageNum} page(s)\n`
     );
 
-    // Step 2: Get all messages with images from PostgreSQL
+    // Step 2: Get all messages with images from PostgreSQL (per user to avoid large query)
     console.log(
       "🖼️  Step 2: Fetching all messages with images from database..."
     );
 
-    const messagesResult = await postgres.query(`
-      SELECT 
-        m.id,
-        m.session_id,
-        m.content,
-        m.images,
-        m.timestamp,
-        m.role,
-        cs.user_id,
-        cs.title as session_title,
-        c.name as character_name
-      FROM messages m
-      JOIN chat_sessions cs ON m.session_id = cs.id
-      LEFT JOIN characters c ON cs.character_id = c.id
-      WHERE m.has_images = true
-        AND m.role = 'user'
-      ORDER BY m.timestamp DESC
-    `);
+    let allMessages = [];
+    let processedUsers = 0;
+
+    for (const user of allUsers) {
+      if (processedUsers % 100 === 0) {
+        console.log(`   Processing users ${processedUsers + 1}-${Math.min(processedUsers + 100, allUsers.length)}...`);
+      }
+
+      const userMessagesResult = await postgres.query(`
+        SELECT 
+          m.id,
+          m.session_id,
+          m.content,
+          m.images,
+          m.timestamp,
+          m.role,
+          cs.user_id,
+          cs.title as session_title,
+          c.name as character_name
+        FROM messages m
+        JOIN chat_sessions cs ON m.session_id = cs.id
+        LEFT JOIN characters c ON cs.character_id = c.id
+        WHERE cs.user_id = $1
+          AND m.has_images = true
+          AND m.role = 'user'
+      `, [user.id]);
+
+      allMessages = allMessages.concat(userMessagesResult.rows);
+      processedUsers++;
+    }
 
     console.log(
-      `✅ Found ${messagesResult.rows.length} messages with images\n`
+      `✅ Found ${allMessages.length} messages with images across ${allUsers.length} users\n`
     );
+
+    // Use allMessages instead of messagesResult.rows
+    const messagesResult = { rows: allMessages };
 
     // Step 3: Create a user lookup map
     const userMap = new Map();
@@ -133,6 +148,11 @@ async function fetchAllUserImages() {
         userData.totalSize += img.size || 0;
         totalSize += img.size || 0;
       });
+    });
+
+    // Sort messages by timestamp descending for each user
+    userImagesMap.forEach((userData) => {
+      userData.messages.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     });
 
     // Step 5: Display results
