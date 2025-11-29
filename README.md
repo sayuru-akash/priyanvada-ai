@@ -235,7 +235,7 @@ Priyanvada AI operates on a credit-based system to ensure sustainable operations
 
 ```env
 # Set to 0 to disable chat functionality and show upgrade prompts
-REMAINING_CREDITS=10
+NEXT_PUBLIC_REMAINING_CREDITS=10
 ```
 
 ### Database Setup
