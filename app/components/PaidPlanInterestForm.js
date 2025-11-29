@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 
 export default function PaidPlanInterestForm({ onClose }) {
@@ -113,8 +113,8 @@ export default function PaidPlanInterestForm({ onClose }) {
               Response Recorded Successfully
             </h3>
             <p className="text-gray-600 text-sm">
-              Thank you for your feedback! We&apos;ll use this information to create
-              better plans for our users.
+              Thank you for your feedback! We&apos;ll use this information to
+              create better plans for our users.
             </p>
           </div>
         </div>
@@ -181,7 +181,7 @@ export default function PaidPlanInterestForm({ onClose }) {
               value={formData.budgetRange}
               onChange={handleInputChange}
               required
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors text-gray-900"
             >
               <option value="">Select budget range...</option>
               <option value="1000_2500">LKR 1,000 - 2,500</option>
@@ -200,7 +200,7 @@ export default function PaidPlanInterestForm({ onClose }) {
               value={formData.currentUsageFrequency}
               onChange={handleInputChange}
               required
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors text-gray-900"
             >
               <option value="">Select frequency...</option>
               <option value="daily">Daily</option>
