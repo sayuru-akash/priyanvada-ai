@@ -1,6 +1,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "./contexts/AuthContext";
+import { CreditProvider } from "./contexts/CreditContext";
 import Head from "next/head";
 import Script from "next/script";
 
@@ -77,7 +78,9 @@ export default function RootLayout({ children }) {
             gtag('config', 'G-TRS8H57KHY');
           `}
         </Script>
-        <AuthProvider>{children}</AuthProvider>
+        <CreditProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </CreditProvider>
       </body>
     </html>
   );

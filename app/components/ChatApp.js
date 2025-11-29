@@ -2,13 +2,16 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { useCredit } from "../contexts/CreditContext";
 import ChatSidebar from "./ChatSidebar";
 import ChatInterface from "./ChatInterface";
 import AuthComponent from "./AuthComponent";
 import CharacterGallery from "./CharacterGallery";
+import CreditExhaustionModal from "./CreditExhaustionModal";
 
 export default function ChatApp() {
   const { user, userProfile, signOut, loading } = useAuth();
+  const { hasCredits, showCreditExhaustionModal } = useCredit();
   const [sessions, setSessions] = useState([]);
   const [currentSession, setCurrentSession] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -97,6 +100,12 @@ export default function ChatApp() {
   };
 
   const handleStartChat = (session, character) => {
+    // Check if user has credits before allowing chat
+    if (!hasCredits) {
+      showCreditExhaustionModal();
+      return;
+    }
+
     setCurrentSession(session);
     setSelectedCharacter(character);
     setCurrentView("chat");
@@ -268,6 +277,7 @@ export default function ChatApp() {
           />
         </div>
       )}
+      <CreditExhaustionModal />
     </>
   );
 }

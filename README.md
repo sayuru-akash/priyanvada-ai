@@ -24,6 +24,7 @@ Priyanvada AI is a sophisticated character-based chat platform that allows users
 - **🌍 Multi-Language Support**: Full support for Sinhala, English, and mixed-language conversations
 - **🔐 Secure Authentication**: Google OAuth integration with Supabase authentication
 - **💾 Hybrid Database Architecture**: Supabase for auth, PostgreSQL for data - optimized for performance and cost
+- **💰 Credit System**: Free credits with paid plan interest collection for sustainable operations
 - **📱 Responsive Design**: Modern UI with Material-UI components and TailwindCSS
 - **🔄 Real-time Chat**: Seamless chat experience with session management
 - **📊 Character Gallery**: Browse and discover characters with detailed profiles
@@ -32,6 +33,7 @@ Priyanvada AI is a sophisticated character-based chat platform that allows users
 ## 🏗 Architecture
 
 ### Database Architecture
+
 ```
 ┌─────────────────┐    ┌─────────────────┐
 │   SUPABASE      │    │   POSTGRESQL    │
@@ -46,6 +48,7 @@ Priyanvada AI is a sophisticated character-based chat platform that allows users
 ### Technology Stack
 
 **Frontend & Framework**
+
 - **Next.js 15.5.2** - React framework with App Router
 - **React 19.1.0** - User interface library
 - **Material-UI (MUI)** - Component library for modern UI
@@ -53,12 +56,14 @@ Priyanvada AI is a sophisticated character-based chat platform that allows users
 - **React Markdown** - Markdown rendering for rich text
 
 **Backend & API**
+
 - **Next.js API Routes** - Server-side API endpoints
 - **Google Gemini AI** - Multiple model support (2.5-Pro, 1.5-Pro, 1.5-Flash)
 - **PostgreSQL** - Primary database for application data
 - **Supabase** - Authentication and user management
 
 **Authentication & Security**
+
 - **Google OAuth 2.0** - Social authentication
 - **Supabase Auth** - User session management
 - **Row Level Security (RLS)** - Database-level security
@@ -75,12 +80,14 @@ Priyanvada AI is a sophisticated character-based chat platform that allows users
 ### Environment Setup
 
 1. **Clone the repository**
+
 ```bash
 git clone https://github.com/dilukshashamal/priyanvada-ai.git
 cd priyanvada-ai
 ```
 
 2. **Install dependencies**
+
 ```bash
 npm install
 ```
@@ -112,18 +119,21 @@ NEXTAUTH_SECRET=your-nextauth-secret
 ### Database Setup
 
 1. **PostgreSQL Setup**
+
 ```bash
 # Run the PostgreSQL setup script
 psql "your_postgresql_connection_string" -f database/postgres-setup.sql
 ```
 
 2. **Supabase Setup**
+
 ```bash
 # Run the Supabase setup script (optional - for auth tables)
 # Execute database/complete-setup.sql in your Supabase SQL editor
 ```
 
 3. **Test Database Connection**
+
 ```bash
 npm run test:postgres
 ```
@@ -188,7 +198,9 @@ priyanvada-ai/
 ## 🎭 Character System
 
 ### Character Creation
+
 Characters in Priyanvada AI are AI entities with:
+
 - **Unique Personalities** - Distinct character traits and behaviors
 - **Backstories** - Rich narrative backgrounds
 - **Custom Greetings** - Personalized conversation starters
@@ -196,19 +208,61 @@ Characters in Priyanvada AI are AI entities with:
 - **Multi-language Support** - Characters can communicate in multiple languages
 
 ### Character Types
+
 - **Public Characters** - Available to all users
 - **Private Characters** - User-specific characters
 - **Featured Characters** - Highlighted characters with special stories
 
 ### Character Management
+
 - Browse character gallery with search and filtering
 - View character details and conversation history
 - Track chat statistics per character
 - Create and customize personal characters (admin feature)
 
+## 💰 Credit System
+
+### Free Credits & Paid Plans
+
+Priyanvada AI operates on a credit-based system to ensure sustainable operations:
+
+- **Free Credits**: New users receive a limited number of free credits
+- **Credit Exhaustion**: When credits run out, users can still browse characters but cannot chat
+- **Paid Plan Interest**: Users are prompted to express interest in paid plans to cover AI and server costs
+- **Data Collection**: Research data is collected to understand user preferences and pricing expectations
+
+### Credit Configuration
+
+```env
+# Set to 0 to disable chat functionality and show upgrade prompts
+REMAINING_CREDITS=10
+```
+
+### Database Setup
+
+```bash
+# Run the credit system database setup
+npm run db:setup-credits
+```
+
+### Paid Plan Interest Collection
+
+When credits are exhausted, users see a modal with:
+
+- **Friendly Message**: Thanks users for their usage
+- **Interest Survey**: Collects data on monthly budget range (LKR) and usage frequency
+- **Database Storage**: All responses are stored in the `paid_plan_interest` table for analysis
+
+**Form Fields:**
+
+- Monthly Budget Range (LKR): 1,000-2,500 | 2,500-5,000 | 5,000-10,000
+- Current Usage Frequency: Daily | Weekly | Monthly | Occasionally
+- Auto-filled: User information (email, name) where available
+
 ## 🔧 API Reference
 
 ### Authentication Endpoints
+
 - `GET /api/auth/google` - Google OAuth initiation
 - `GET /api/auth/google/callback` - OAuth callback handler
 - `POST /api/auth/login` - Email/password login
@@ -216,25 +270,34 @@ Characters in Priyanvada AI are AI entities with:
 - `GET /api/auth/me` - Get current user info
 
 ### Character Endpoints
+
 - `GET /api/characters` - List characters with filtering
 - `GET /api/characters/[id]` - Get specific character
 - `POST /api/characters` - Create new character (admin)
 - `PUT /api/characters/[id]` - Update character (admin)
 
 ### Chat Endpoints
+
 - `POST /api/chat` - Send message and get AI response
 - `GET /api/sessions` - Get user chat sessions
 - `POST /api/sessions` - Create new chat session
 - `DELETE /api/sessions/[id]` - Delete chat session
 - `GET /api/sessions/[id]` - Get session messages
 
+### Credit System Endpoints
+
+- `POST /api/paid-plan-interest` - Submit paid plan interest form
+- `GET /api/paid-plan-interest` - Get paid plan interest submissions (admin)
+
 ## 🛠 Development Tools
 
 ### Testing & Validation
+
 ```bash
 # Test database connections
 npm run test:db          # Full database test
 npm run test:postgres    # PostgreSQL-specific test
+npm run test:credit-system # Credit system and paid plan interest test
 
 # Database migration tools
 npm run migrate:characters:dry-run   # Preview character migration
@@ -243,6 +306,7 @@ npm run migrate:retry-failed        # Retry failed migrations
 ```
 
 ### Debugging & Monitoring
+
 - Comprehensive error logging
 - AI model fallback mechanisms
 - Database connection pooling
@@ -251,6 +315,7 @@ npm run migrate:retry-failed        # Retry failed migrations
 ## 🌟 Advanced Features
 
 ### AI Integration
+
 - **Multi-Model Support**: Automatic fallback between Gemini models
 - **Context-Aware Responses**: Character personality integration
 - **Conversation Memory**: Session-based context retention
@@ -258,12 +323,14 @@ npm run migrate:retry-failed        # Retry failed migrations
 - **Rate Limiting**: Built-in request management
 
 ### Database Optimization
+
 - **Hybrid Architecture**: Optimal resource allocation
 - **Connection Pooling**: Efficient database connections
 - **Indexing Strategy**: Optimized query performance
 - **Migration Tools**: Seamless data migration utilities
 
 ### Security Features
+
 - **OAuth Integration**: Secure Google authentication
 - **Session Management**: Secure user sessions
 - **Input Validation**: Comprehensive data validation
@@ -273,6 +340,7 @@ npm run migrate:retry-failed        # Retry failed migrations
 ## 🔧 Configuration
 
 ### AI Configuration (`config/instructions.js`)
+
 ```javascript
 export const instructionsConfig = {
   systemInstructions: {
@@ -282,15 +350,17 @@ export const instructionsConfig = {
       guidelines: [
         "Be concise but thorough",
         "Ask clarifying questions when needed",
-        "Provide examples when explaining"
-      ]
-    }
-  }
-}
+        "Provide examples when explaining",
+      ],
+    },
+  },
+};
 ```
 
 ### Database Configuration
+
 The application uses a hybrid database approach:
+
 - **Supabase**: Handles authentication, user profiles, and OAuth data
 - **PostgreSQL**: Stores application data (characters, chats, messages)
 
@@ -299,6 +369,7 @@ The application uses a hybrid database approach:
 ### Environment-Specific Settings
 
 **Production Environment**
+
 ```env
 NODE_ENV=production
 DATABASE_URL=your_production_postgresql_url
@@ -307,12 +378,14 @@ NEXT_PUBLIC_SUPABASE_URL=your_production_supabase_url
 ```
 
 ### Deployment Platforms
+
 - **Vercel** (Recommended for Next.js)
 - **Railway** (Full-stack deployment)
 - **Heroku** (Container deployment)
 - **DigitalOcean** (VPS deployment)
 
 ### Database Hosting
+
 - **Neon** (PostgreSQL) - Recommended
 - **Railway** (PostgreSQL)
 - **Supabase** (Authentication only)
@@ -329,6 +402,7 @@ We welcome contributions! Please follow these steps:
 5. Open a Pull Request
 
 ### Development Guidelines
+
 - Follow existing code style and conventions
 - Add tests for new features
 - Update documentation for API changes
@@ -349,6 +423,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📞 Support
 
 For support and questions:
+
 - **Issues**: [GitHub Issues](https://github.com/dilukshashamal/priyanvada-ai/issues)
 - **Email**: Support inquiries welcome
 - **Documentation**: Check the `/docs` folder for detailed guides

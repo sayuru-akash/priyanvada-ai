@@ -306,6 +306,18 @@ export default function ChatInterface({
   }, []);
 
   const handleSendMessage = async () => {
+    // Check credits before allowing message send
+    const credits = process.env.NEXT_PUBLIC_REMAINING_CREDITS;
+    const hasCredits = credits ? parseInt(credits, 10) > 0 : true; // Default to true if not set
+
+    if (!hasCredits) {
+      // Show credit exhaustion modal instead of sending message
+      if (window.showCreditExhaustionModal) {
+        window.showCreditExhaustionModal();
+      }
+      return;
+    }
+
     if ((!inputMessage.trim() && selectedImages.length === 0) || loading)
       return;
 
