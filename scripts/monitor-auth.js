@@ -71,7 +71,7 @@ async function monitorAuthChanges() {
 
     // Check if auth service file exists and has correct methods
     try {
-      const authService = require("./lib/auth.js");
+      const authService = require("../lib/auth.js");
       console.log("   ✅ Auth service found");
       console.log("   ✅ Methods available:");
       console.log("      - signUp()");

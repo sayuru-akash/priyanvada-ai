@@ -1,16 +1,31 @@
-// Middleware is not needed for this implementation since we handle
-// authentication at the component level and use Supabase RLS for database security.
-// The API routes receive userId as parameters and the database policies
-// ensure users can only access their own data.
+import { NextResponse } from "next/server";
 
 export function middleware(request) {
-  // Currently no middleware needed - authentication handled by:
-  // 1. Client-side auth context
-  // 2. Supabase RLS policies
-  // 3. API route parameter validation
-  return;
+  const { pathname } = request.nextUrl;
+
+  // Protect Admin Routes
+  if (pathname.startsWith("/priyaadmin")) {
+    const adminSession = request.cookies.get("priyanvada_admin_session");
+
+    if (!adminSession) {
+      const loginUrl = new URL("/priyanvadaadminlogin", request.url);
+      return NextResponse.redirect(loginUrl);
+    }
+  }
+
+  // Prevent logged-in admins from seeing the login page
+  if (pathname.startsWith("/priyanvadaadminlogin")) {
+    const adminSession = request.cookies.get("priyanvada_admin_session");
+
+    if (adminSession) {
+      const dashboardUrl = new URL("/priyaadmin", request.url);
+      return NextResponse.redirect(dashboardUrl);
+    }
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: [],
+  matcher: ["/priyaadmin/:path*", "/priyanvadaadminlogin"],
 };
