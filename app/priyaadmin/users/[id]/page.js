@@ -31,6 +31,10 @@ export default function UserDetailPage({ params }) {
   // Pagination state
   const [page, setPage] = useState(0);
   const [totalChats, setTotalChats] = useState(0);
+  const [sortModel, setSortModel] = useState([
+    { field: "updated_at", sort: "desc" },
+  ]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Unwrap params
   useEffect(() => {
@@ -53,7 +57,13 @@ export default function UserDetailPage({ params }) {
       const loadChats = async () => {
         setLoadingChats(true);
         const offset = page * 10;
-        const res = await fetchUserChats(userId, offset, 10);
+        const res = await fetchUserChats(
+          userId,
+          offset,
+          10,
+          sortModel,
+          searchQuery
+        );
         if (res.success) {
           setChats(res.data);
           setTotalChats(res.count);
@@ -62,7 +72,7 @@ export default function UserDetailPage({ params }) {
       };
       loadChats();
     }
-  }, [userId, page]);
+  }, [userId, page, sortModel, searchQuery]);
 
   if (loadingUser) return <Box p={4}>Loading user profile...</Box>;
   if (!userData) return <Box p={4}>User not found.</Box>;
@@ -74,6 +84,7 @@ export default function UserDetailPage({ params }) {
       id: "character_avatar",
       label: "Character",
       width: 60,
+      sortable: false,
       format: (val, row) => (
         <Avatar
           src={val || row.character_avatar}
@@ -102,11 +113,11 @@ export default function UserDetailPage({ params }) {
       id: "has_images",
       label: "Media",
       align: "center",
-      format: (val) =>
-        val ? (
+      format: (val, row) =>
+        row.image_count > 0 ? (
           <Chip
             icon={<ImageIcon />}
-            label="Images"
+            label={`${row.image_count}`}
             size="small"
             color="secondary"
           />
@@ -124,6 +135,7 @@ export default function UserDetailPage({ params }) {
       id: "actions",
       label: "Actions",
       align: "right",
+      sortable: false,
       format: (_, row) => (
         <Button
           size="small"
@@ -322,6 +334,19 @@ export default function UserDetailPage({ params }) {
             pageSize={10}
             onPageChange={setPage}
             searchPlaceholder="Filter chats..."
+            onSortChange={(field) => {
+              const currentSort = sortModel[0];
+              const isAsc =
+                currentSort?.field === field && currentSort?.sort === "asc";
+              setSortModel([{ field, sort: isAsc ? "desc" : "asc" }]);
+              setPage(0);
+            }}
+            orderBy={sortModel[0]?.field}
+            order={sortModel[0]?.sort}
+            onSearch={(query) => {
+              setSearchQuery(query);
+              setPage(0);
+            }}
           />
         </Box>
       </Box>

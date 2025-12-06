@@ -89,34 +89,93 @@ export async function fetchUserDetails(userId) {
   }
 }
 
-export async function fetchUserChats(userId, offset = 0, limit = 10) {
+export async function fetchUserChats(
+  userId,
+  offset = 0,
+  limit = 10,
+  sort = [],
+  search = ""
+) {
   try {
-    const countRes = await postgres.query(
-      `
-            SELECT COUNT(*) as total 
-            FROM chat_sessions 
-            WHERE user_id = $1
-        `,
-      [userId]
-    );
+    // 1. Build Dynamic Conditions
+    const conditions = ["cs.user_id = $1"];
+    const params = [userId];
+    let paramIndex = 2;
 
+    if (search) {
+      conditions.push(
+        `(cs.title ILIKE $${paramIndex} OR c.name ILIKE $${paramIndex})`
+      );
+      params.push(`%${search}%`);
+      paramIndex++;
+    }
+
+    const whereClause = conditions.join(" AND ");
+
+    // 2. Build Order By Clause
+    let orderByClause = "ORDER BY cs.updated_at DESC";
+    if (sort && sort.length > 0) {
+      const { field, sort: direction } = sort[0];
+      const dir = direction === "asc" ? "ASC" : "DESC";
+
+      switch (field) {
+        case "character_name":
+          orderByClause = `ORDER BY c.name ${dir}`;
+          break;
+        case "title":
+          orderByClause = `ORDER BY cs.title ${dir}`;
+          break;
+        case "message_count":
+          orderByClause = `ORDER BY message_count ${dir}`;
+          break;
+        case "has_images":
+          orderByClause = `ORDER BY image_count ${dir}`;
+          break;
+        case "created_at":
+          orderByClause = `ORDER BY cs.created_at ${dir}`;
+          break;
+        case "updated_at":
+          orderByClause = `ORDER BY cs.updated_at ${dir}`;
+          break;
+        default:
+          orderByClause = `ORDER BY cs.updated_at DESC`;
+      }
+    }
+
+    // 3. Get Total Count (with filters)
+    const countQuery = `
+            SELECT COUNT(*) as total 
+            FROM chat_sessions cs
+            LEFT JOIN characters c ON cs.character_id = c.id
+            WHERE ${whereClause}
+        `;
+
+    // Only pass search params to count query (limit/offset not needed)
+    // We slice the params array to match the placeholders used in whereClause
+    const countParams = params.slice(0, paramIndex - 1);
+
+    const countRes = await postgres.query(countQuery, countParams);
     const total = parseInt(countRes.rows[0].total);
 
+    // 4. Fetch Data
     const query = `
             SELECT 
                 cs.*,
                 c.name as character_name,
                 c.avatar_url as character_avatar,
                 (SELECT COUNT(*) FROM messages WHERE session_id = cs.id) as message_count,
-                (SELECT EXISTS(SELECT 1 FROM messages WHERE session_id = cs.id AND has_images = true)) as has_images
+                (SELECT COUNT(*) FROM messages m WHERE m.session_id = cs.id AND m.images IS NOT NULL AND m.images != 'null') as image_count
             FROM chat_sessions cs
             LEFT JOIN characters c ON cs.character_id = c.id
-            WHERE cs.user_id = $1
-            ORDER BY cs.updated_at DESC
-            LIMIT $2 OFFSET $3
+            WHERE ${whereClause}
+            ${orderByClause}
+            LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
         `;
 
-    const res = await postgres.query(query, [userId, limit, offset]);
+    // Add limit and offset to full params list
+    params.push(limit, offset);
+
+    const res = await postgres.query(query, params);
 
     const chats = res.rows.map((c) => ({
       ...c,
