@@ -8,6 +8,8 @@ export default function CharacterGallery({
   onStartChat,
   onViewChatHistory,
   onLogout,
+  hasCredits,
+  showCreditExhaustionModal,
 }) {
   const [characters, setCharacters] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -50,6 +52,13 @@ export default function CharacterGallery({
   }, [loadCharacters]);
 
   const handleStartChat = async (character) => {
+    if (!hasCredits) {
+      if (showCreditExhaustionModal) {
+        showCreditExhaustionModal();
+      }
+      return;
+    }
+
     setStartingChatId(character.id);
     try {
       const response = await fetch("/api/sessions", {
