@@ -85,8 +85,8 @@ export default function AdminLayout({ children }) {
             flexGrow: 1,
             ml: { xs: 0, md: "260px" }, // No margin on mobile
             p: { xs: 2, md: 4 },
-            width: { xs: "100%", md: "calc(100% - 260px)" }, // Full width on mobile
-            overflowX: "auto",
+            minWidth: 0, // Prevent flex child from overflowing
+            overflowX: "hidden", // Changed from auto to hidden to prevent double scrollbars
           }}
         >
           {children}
