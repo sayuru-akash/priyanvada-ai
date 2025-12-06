@@ -60,6 +60,11 @@ export default function ChatApp() {
   const createNewSession = async (characterId, title = "New Chat") => {
     if (!user) return;
 
+    if (!hasCredits) {
+      showCreditExhaustionModal();
+      return;
+    }
+
     try {
       const response = await fetch("/api/sessions", {
         method: "POST",
@@ -252,6 +257,8 @@ export default function ChatApp() {
           onStartChat={handleStartChat}
           onViewChatHistory={handleViewChatHistory}
           onLogout={handleLogout}
+          hasCredits={hasCredits}
+          showCreditExhaustionModal={showCreditExhaustionModal}
         />
       ) : (
         <div className="flex h-screen w-full overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-100">

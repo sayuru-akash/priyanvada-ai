@@ -431,7 +431,7 @@ For support and questions:
 ---
 
 <div align="center">
-  <strong>Built with ❤️ by the Priyanvada AI Team 2025</strong>
+  <strong>Built with ❤️ by the Priyanvada AI Team 2026</strong>
   <br><br>
   <img src="https://img.shields.io/badge/Made%20with-Next.js-black?style=for-the-badge&logo=next.js" />
   <img src="https://img.shields.io/badge/Powered%20by-Google%20Gemini-orange?style=for-the-badge&logo=google" />
